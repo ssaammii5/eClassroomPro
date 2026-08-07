@@ -65,3 +65,9 @@ coverage/
 # =========================
 # Ignore local mounted database data if you map a volume in docker-compose
 /db/data/
+
+# ==========================================
+# Custom Files
+# ==========================================
+*.local.md
+*.local.txt
