@@ -1,0 +1,67 @@
+# =========================
+# 1. Root / Environments
+# =========================
+# Keep secrets out of source control as requested by the guidelines
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Note: .env.example should NOT be ignored so the evaluator can see it.
+
+# =========================
+# 2. OS & Editor Files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+*.userprefs
+*.sln.docstates
+
+# =========================
+# 3. Backend (.NET Core)
+# =========================
+# Build results
+[Bb]in/
+[Oo]bj/
+
+# Local appsettings (if you use them for local DB strings)
+appsettings.Development.json
+appsettings.Local.json
+
+# Rider / Visual Studio specific files
+.vs/
+TestResults/
+*.log
+
+# =========================
+# 4. Frontend (Next.js & Node)
+# =========================
+# dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js build output
+.next/
+out/
+build/
+.swc/
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# testing
+coverage/
+
+# =========================
+# 5. Database & Docker
+# =========================
+# Ignore local mounted database data if you map a volume in docker-compose
+/db/data/
