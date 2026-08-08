@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    container_name: eclassroompro-db
+    environment:
+      POSTGRES_DB: eClassroomPro
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d eClassroomPro"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    container_name: eclassroompro-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=eClassroomPro;Username=postgres;Password=postgres
+      Jwt__Secret: change-this-to-a-long-random-secret-key-at-least-32-chars
+      Jwt__Issuer: eClassroomPro.API
+      Jwt__Audience: eClassroomPro.Client
+      Jwt__ExpiresMinutes: 60
+    ports:
+      - "5000:8080"
+
+volumes:
+  pgdata:
