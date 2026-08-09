@@ -1,3 +1,4 @@
+// backend/src/Application/Options/JwtSettings.cs
 namespace eClassroomPro.Application.Options;
 
 public class JwtSettings
@@ -8,5 +9,7 @@ public class JwtSettings
 
     public string Audience { get; set; } = string.Empty;
 
-    public int ExpiresMinutes { get; set; } = 60;
+    public int ExpiresMinutes { get; set; } = 15;
+
+    public int RefreshTokenExpirationDays { get; set; } = 7;
 }

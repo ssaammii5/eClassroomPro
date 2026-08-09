@@ -5,6 +5,10 @@ namespace eClassroomPro.API.Services;
 
 public class CurrentUserService : ICurrentUserService
 {
+    private const string SubClaim = "sub";
+    private const string EmailClaim = "email";
+    private const string RoleClaim = "role";
+
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
@@ -16,13 +20,14 @@ public class CurrentUserService : ICurrentUserService
     {
         get
         {
-            var value = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+            var value = GetClaimValue(SubClaim) ?? GetClaimValue(ClaimTypes.NameIdentifier);
 
             return int.TryParse(value, out var id) ? id : null;
         }
     }
 
-    public string? Email => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.Email);
+    public string? Email =>
+        GetClaimValue(EmailClaim) ?? GetClaimValue(ClaimTypes.Email);
 
     public bool IsAdmin => HasRole("Admin");
 
@@ -32,6 +37,19 @@ public class CurrentUserService : ICurrentUserService
 
     private bool HasRole(string role)
     {
-        return _httpContextAccessor.HttpContext?.User?.IsInRole(role) ?? false;
+        var user = _httpContextAccessor.HttpContext?.User;
+
+        if (user is null)
+        {
+            return false;
+        }
+
+        return user.IsInRole(role) ||
+               string.Equals(user.FindFirstValue(RoleClaim), role, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string? GetClaimValue(string type)
+    {
+        return _httpContextAccessor.HttpContext?.User?.FindFirstValue(type);
     }
 }

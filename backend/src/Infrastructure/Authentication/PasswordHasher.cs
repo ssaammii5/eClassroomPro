@@ -1,3 +1,4 @@
+// backend/src/Infrastructure/Authentication/PasswordHasher.cs
 using System.Security.Cryptography;
 using eClassroomPro.Application.Interfaces;
 
@@ -13,11 +14,13 @@ public class PasswordHasher : IPasswordHasher
     {
         var salt = RandomNumberGenerator.GetBytes(SaltSize);
 
-        var key = new Rfc2898DeriveBytes(
+        // Fixed SYSLIB0060 warning by using the static Pbkdf2 method
+        var key = Rfc2898DeriveBytes.Pbkdf2(
             password,
             salt,
             Iterations,
-            HashAlgorithmName.SHA256).GetBytes(KeySize);
+            HashAlgorithmName.SHA256,
+            KeySize);
 
         return $"{Iterations}.{Convert.ToBase64String(salt)}.{Convert.ToBase64String(key)}";
     }
@@ -27,7 +30,6 @@ public class PasswordHasher : IPasswordHasher
         try
         {
             var parts = passwordHash.Split('.');
-
             if (parts.Length != 3)
             {
                 return false;

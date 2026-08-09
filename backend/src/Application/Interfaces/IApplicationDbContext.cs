@@ -17,5 +17,7 @@ public interface IApplicationDbContext
 
     DbSet<AppSetting> AppSettings { get; }
 
+    DbSet<RefreshToken> RefreshTokens { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

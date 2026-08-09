@@ -4,5 +4,9 @@ namespace eClassroomPro.Application.Interfaces;
 
 public interface ITokenService
 {
-    string CreateAccessToken(User user);
+    (string AccessToken, DateTime ExpiresAtUtc) CreateAccessToken(User user);
+
+    string CreateRefreshToken();
+
+    string HashRefreshToken(string refreshToken);
 }

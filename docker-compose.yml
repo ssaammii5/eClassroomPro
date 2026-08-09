@@ -25,10 +25,11 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=eClassroomPro;Username=postgres;Password=postgres
-      Jwt__Secret: change-this-to-a-long-random-secret-key-at-least-32-chars
+      Jwt__Secret: ${JWT_SECRET:-DevelopmentOnlySecret_ReplaceMe_1234567890_1234567890_1234567890_ABCDEFGHIJKLMNOPQRSTUVWXYZ}
       Jwt__Issuer: eClassroomPro.API
       Jwt__Audience: eClassroomPro.Client
-      Jwt__ExpiresMinutes: 60
+      Jwt__ExpiresMinutes: "15"
+      Jwt__RefreshTokenExpirationDays: "7"
     ports:
       - "5000:8080"
 

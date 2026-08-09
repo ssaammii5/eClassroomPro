@@ -23,6 +23,8 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWor
 
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

@@ -2,6 +2,7 @@ using eClassroomPro.Application.DTOs.Users;
 using eClassroomPro.Application.Exceptions;
 using eClassroomPro.Application.Interfaces;
 using eClassroomPro.Domain.Entities;
+using eClassroomPro.Domain.Enums;
 
 namespace eClassroomPro.Application.Services;
 
@@ -11,17 +12,23 @@ public class UserService
     private readonly IPasswordHasher _passwordHasher;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IDateTimeProvider _dateTimeProvider;
 
     public UserService(
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
         ICurrentUserService currentUserService,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IRefreshTokenRepository refreshTokenRepository,
+        IDateTimeProvider dateTimeProvider)
     {
         _userRepository = userRepository;
         _passwordHasher = passwordHasher;
         _currentUserService = currentUserService;
         _unitOfWork = unitOfWork;
+        _refreshTokenRepository = refreshTokenRepository;
+        _dateTimeProvider = dateTimeProvider;
     }
 
     public async Task<IReadOnlyList<UserDto>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -57,9 +64,9 @@ public class UserService
             throw new ValidationException("Email is required.");
         }
 
-        if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 6)
+        if (string.IsNullOrWhiteSpace(dto.Password) || dto.Password.Length < 8)
         {
-            throw new ValidationException("Password must contain at least 6 characters.");
+            throw new ValidationException("Password must contain at least 8 characters.");
         }
 
         var email = dto.Email.Trim().ToLowerInvariant();
@@ -98,20 +105,32 @@ public class UserService
             throw new BusinessException("A user with this email already exists.");
         }
 
+        var passwordChanged = !string.IsNullOrWhiteSpace(dto.Password);
+        var roleChanged = user.Role != dto.Role;
+        var activeChanged = user.IsActive != dto.IsActive;
+
         user.Name = dto.Name.Trim();
         user.Email = email;
         user.Role = dto.Role;
         user.IsActive = dto.IsActive;
         user.UpdatedAtUtc = DateTime.UtcNow;
 
-        if (!string.IsNullOrWhiteSpace(dto.Password))
+        if (passwordChanged)
         {
-            if (dto.Password.Length < 6)
+            if (dto.Password!.Length < 8)
             {
-                throw new ValidationException("Password must contain at least 6 characters.");
+                throw new ValidationException("Password must contain at least 8 characters.");
             }
 
             user.PasswordHash = _passwordHasher.Hash(dto.Password);
+        }
+
+        if (passwordChanged || roleChanged || activeChanged)
+        {
+            await _refreshTokenRepository.RevokeAllForUserAsync(
+                user.Id,
+                _dateTimeProvider.UtcNow,
+                cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -128,6 +147,11 @@ public class UserService
 
         var user = await _userRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("User not found.");
+
+        await _refreshTokenRepository.RevokeAllForUserAsync(
+            user.Id,
+            _dateTimeProvider.UtcNow,
+            cancellationToken);
 
         _userRepository.Remove(user);
 
