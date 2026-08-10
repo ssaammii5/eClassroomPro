@@ -35,3 +35,26 @@ services:
 
 volumes:
   pgdata:
+
+
+
+  frontend:
+    build: ./frontend
+    container_name: eclassroompro-frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount your local code into the container for Hot Module Replacement (HMR)
+      - ./frontend:/app
+      # Prevent your local node_modules from overriding the container's node_modules
+      - /app/node_modules
+      # If using Next.js 13+, prevent the .next folder from being overwritten
+      - /app/.next
+    environment:
+      # Tell Next.js how to reach your ASP.NET Core API
+      # Use localhost because the browser makes this request, not the Docker container
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+      # Use the internal Docker network for Server-Side Rendering (SSR) API calls
+      - INTERNAL_API_URL=http://api:8080
