@@ -23,6 +23,28 @@ export interface AssignmentDetail {
     privateCommentTarget: string;
 }
 
+/** Files the student can attach via "Add or create → File" */
+export const submissionFilePool: AssignmentAttachment[] = [
+    {
+        id: 1,
+        title: "Enabling Low-Resource Neural Machine Translation.pdf",
+        fileType: "PDF",
+        thumbClass: "bg-gray-100",
+    },
+    {
+        id: 2,
+        title: "Improving Implicit Discourse Relation Recognition with Semantics.pdf",
+        fileType: "PDF",
+        thumbClass: "bg-gray-100",
+    },
+    {
+        id: 3,
+        title: "1902029 Lab Manual Final.pdf",
+        fileType: "PDF",
+        thumbClass: "bg-gray-100",
+    },
+];
+
 const assignmentDetails: AssignmentDetail[] = [
     {
         id: 1,
@@ -44,15 +66,8 @@ const assignmentDetails: AssignmentDetail[] = [
             },
         ],
         submission: {
-            status: "Turned in",
-            attachments: [
-                {
-                    id: 1,
-                    title: "1902029 Lab Manual Final.pdf",
-                    fileType: "PDF",
-                    thumbClass: "bg-gray-100",
-                },
-            ],
+            status: "Assigned",
+            attachments: [],
         },
         privateCommentTarget: "Dr. Md Samsuzzaman Sobuz",
     },

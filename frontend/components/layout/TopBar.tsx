@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, GraduationCap, Grip, Menu, Plus } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconButton } from "@/components/ui/IconButton";
 import { homeClasses, sidebarClasses } from "@/lib/mock-data";
@@ -36,14 +37,24 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
                     </span>
                     <span className="text-[22px] text-gray-700 max-sm:hidden">Classroom</span>
                 </a>
+
+                {/* Clickable class breadcrumb -> class home page */}
                 {classCourse && (
-                    <>
+                    <Link
+                        href={`/classes/${classCourse.id}`}
+                        title={classCourse.name}
+                        className="flex min-w-0 items-center rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-gray-900/5"
+                    >
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
-                        <div className="min-w-0">
-                            <p className="truncate text-[15px] font-medium text-gray-800">{classCourse.name}</p>
-                            {classSub && <p className="truncate text-xs text-gray-600">{classSub}</p>}
-                        </div>
-                    </>
+                        <span className="min-w-0">
+                            <span className="block truncate text-[15px] font-medium text-gray-800">
+                                {classCourse.name}
+                            </span>
+                            {classSub && (
+                                <span className="block truncate text-xs text-gray-600">{classSub}</span>
+                            )}
+                        </span>
+                    </Link>
                 )}
             </div>
 

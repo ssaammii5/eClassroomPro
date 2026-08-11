@@ -20,7 +20,9 @@ export function ClassPageClient({ title, details }: ClassPageClientProps) {
             <ClassTabs tab={tab} onTabChange={setTab} />
 
             {tab === "stream" && <StreamView title={title} details={details} />}
-            {tab === "classwork" && <ClassworkView items={details.classwork} />}
+            {tab === "classwork" && (
+                <ClassworkView items={details.classwork} courseId={details.courseId} />
+            )}
             {tab === "people" && <PeopleView people={details.people} />}
         </div>
     );

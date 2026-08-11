@@ -10,14 +10,17 @@ import {
     EllipsisVertical,
     SquareUserRound,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { IconButton } from "@/components/ui/IconButton";
 import type { ClassworkEntry } from "@/lib/schemas";
 
 interface ClassworkViewProps {
     items: ClassworkEntry[];
+    courseId?: number;
 }
 
-export function ClassworkView({ items }: ClassworkViewProps) {
+export function ClassworkView({ items, courseId }: ClassworkViewProps) {
+    const router = useRouter();
     const [topicFilter, setTopicFilter] = useState("all");
     const [collapsedTopics, setCollapsedTopics] = useState<ReadonlySet<string>>(new Set());
     const [expandedItems, setExpandedItems] = useState<ReadonlySet<number>>(new Set());
@@ -57,8 +60,8 @@ export function ClassworkView({ items }: ClassworkViewProps) {
         <div className="mx-auto w-full max-w-[1400px] px-4 py-8 sm:px-8">
             {/* Toolbar */}
             <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-                <fieldset className="relative w-full max-w-[420px] rounded border border-gray-500/70">
-                    <legend className="ml-3 px-1 text-xs text-gray-800">Topic filter</legend>
+                <fieldset className="relative w-full max-w-[420px] rounded border border-gray-500/70 focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8]">
+                    <legend className="ml-3 bg-white px-1 text-xs text-gray-800">Topic filter</legend>
                     <div className="relative">
                         <select
                             value={topicFilter}
@@ -79,7 +82,8 @@ export function ClassworkView({ items }: ClassworkViewProps) {
                 <div className="flex items-center gap-6">
                     <button
                         type="button"
-                        className="flex items-center gap-3 rounded-full border border-gray-400 px-5 py-2.5 text-sm font-medium text-[#1a73e8] hover:bg-blue-50"
+                        onClick={() => courseId !== undefined && router.push(`/classes/${courseId}/work`)}
+                        className="flex cursor-pointer items-center gap-3 rounded-full border border-gray-400 px-5 py-2.5 text-sm font-medium text-[#1a73e8] hover:bg-blue-50"
                     >
                         <SquareUserRound className="h-5 w-5" />
                         View your work
@@ -87,7 +91,7 @@ export function ClassworkView({ items }: ClassworkViewProps) {
                     <button
                         type="button"
                         onClick={toggleAll}
-                        className="flex items-center gap-2 text-sm font-medium text-[#1a73e8] hover:underline"
+                        className="flex cursor-pointer items-center gap-2 text-sm font-medium text-[#1a73e8] hover:underline"
                     >
                         {allCollapsed ? <ChevronsUpDown className="h-5 w-5" /> : <ChevronsDownUp className="h-5 w-5" />}
                         {allCollapsed ? "Expand all" : "Collapse all"}
@@ -95,11 +99,10 @@ export function ClassworkView({ items }: ClassworkViewProps) {
                 </div>
             </div>
 
-            {/* Topic sections */}
+            {/* Topic groups */}
             {visibleGroups.length === 0 && (
                 <p className="py-16 text-center text-sm text-gray-600">No classwork posted yet.</p>
             )}
-
             {visibleGroups.map((group) => {
                 const collapsed = collapsedTopics.has(group.topic);
                 return (
@@ -119,9 +122,7 @@ export function ClassworkView({ items }: ClassworkViewProps) {
                                 </IconButton>
                             </div>
                         </div>
-
                         <div className="mt-3 border-t border-gray-300" />
-
                         {!collapsed &&
                             group.entries.map((entry) => (
                                 <ClassworkRow
@@ -138,10 +139,6 @@ export function ClassworkView({ items }: ClassworkViewProps) {
     );
 }
 
-/* ------------------------------------------------------------------ */
-/* Single classwork row (collapsed line vs expanded card)              */
-/* ------------------------------------------------------------------ */
-
 function ClassworkRow({
     entry,
     expanded,
@@ -155,7 +152,7 @@ function ClassworkRow({
         <button
             type="button"
             onClick={onToggle}
-            className={`flex w-full items-center gap-5 text-left hover:bg-gray-900/5 ${expanded ? "px-4 py-4" : "px-2 py-4"
+            className={`flex w-full cursor-pointer items-center gap-5 text-left hover:bg-gray-900/5 ${expanded ? "px-4 py-4" : "px-2 py-4"
                 }`}
         >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-300/70 text-gray-700">
