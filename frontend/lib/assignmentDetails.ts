@@ -3,6 +3,9 @@ export interface AssignmentAttachment {
     title: string;
     fileType: string;
     thumbClass: string;
+    /** Object URL (uploaded file) or external URL (link) */
+    url?: string;
+    kind?: "file" | "link";
 }
 
 export interface AssignmentSubmission {
@@ -22,28 +25,6 @@ export interface AssignmentDetail {
     submission: AssignmentSubmission;
     privateCommentTarget: string;
 }
-
-/** Files the student can attach via "Add or create → File" */
-export const submissionFilePool: AssignmentAttachment[] = [
-    {
-        id: 1,
-        title: "Enabling Low-Resource Neural Machine Translation.pdf",
-        fileType: "PDF",
-        thumbClass: "bg-gray-100",
-    },
-    {
-        id: 2,
-        title: "Improving Implicit Discourse Relation Recognition with Semantics.pdf",
-        fileType: "PDF",
-        thumbClass: "bg-gray-100",
-    },
-    {
-        id: 3,
-        title: "1902029 Lab Manual Final.pdf",
-        fileType: "PDF",
-        thumbClass: "bg-gray-100",
-    },
-];
 
 const assignmentDetails: AssignmentDetail[] = [
     {

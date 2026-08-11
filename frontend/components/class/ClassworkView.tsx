@@ -82,7 +82,7 @@ export function ClassworkView({ items, courseId }: ClassworkViewProps) {
                 <div className="flex items-center gap-6">
                     <button
                         type="button"
-                        onClick={() => courseId !== undefined && router.push(`/classes/${courseId}/work`)}
+                        onClick={() => courseId !== undefined && router.push(`/class/${courseId}/work`)}
                         className="flex cursor-pointer items-center gap-3 rounded-full border border-gray-400 px-5 py-2.5 text-sm font-medium text-[#1a73e8] hover:bg-blue-50"
                     >
                         <SquareUserRound className="h-5 w-5" />

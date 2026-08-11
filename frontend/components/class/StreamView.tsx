@@ -76,7 +76,7 @@ export function StreamView({ title, details }: StreamViewProps) {
                             <AnnouncementCard
                                 key={a.id}
                                 announcement={a}
-                                href={`/classes/${details.courseId}/assignments/${a.id}`}
+                                href={`/class/${details.courseId}/assignments/${a.id}`}
                             />
                         ))}
                     </div>

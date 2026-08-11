@@ -9,13 +9,11 @@ import {
     House,
     ListTodo,
     Settings,
-    Sparkles,
 } from "lucide-react";
 import { sidebarClasses } from "@/lib/mock-data";
 
 interface SidebarProps {
     open: boolean;
-    /** Called when the user clicks "Enrolled" while the rail is collapsed. */
     onExpand?: () => void;
 }
 
@@ -32,11 +30,9 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
             <nav className="flex flex-col gap-0.5">
                 <NavItem open={open} active href="/" icon={<House className="h-6 w-6" />} label="Home" />
                 <NavItem open={open} href="#" icon={<CalendarDays className="h-6 w-6" />} label="Calendar" />
-                <NavItem open={open} href="#" icon={<Sparkles className="h-6 w-6" />} label="Gemini" badge />
-
                 {open && <div className="my-2 h-px bg-gray-300/70" />}
 
-                {/* Enrolled: full header when expanded, single icon when collapsed */}
+                {/* Enrolled */}
                 {open ? (
                     <button
                         type="button"
@@ -63,7 +59,7 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
                     </button>
                 )}
 
-                {/* To-do + class list (expanded only for the class list) */}
+                {/* To-do */}
                 <NavItem open={open} href="#" icon={<ListTodo className="h-6 w-6" />} label="To-do" />
 
                 {open && enrolledOpen && (
@@ -94,10 +90,6 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
     );
 }
 
-/* ------------------------------------------------------------------ */
-/* Nav item: label + icon when expanded, icon-only rail when collapsed */
-/* ------------------------------------------------------------------ */
-
 interface NavItemProps {
     href: string;
     icon: ReactNode;
@@ -108,7 +100,6 @@ interface NavItemProps {
 }
 
 function NavItem({ href, icon, label, active = false, badge = false, open }: NavItemProps) {
-    /* Collapsed: icon-only with tooltip */
     if (!open) {
         return (
             <a
@@ -127,8 +118,6 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             </a>
         );
     }
-
-    /* Expanded: icon + label */
     return (
         <a
             href={href}

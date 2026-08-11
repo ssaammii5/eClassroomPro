@@ -13,7 +13,7 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
     const pathname = usePathname();
-    const classMatch = pathname.match(/^\/classes\/(\d+)/);
+    const classMatch = pathname.match(/^\/class\/(\d+)/);
     const classCourse = classMatch
         ? homeClasses.find((c) => c.id === Number(classMatch[1])) ??
         sidebarClasses.find((c) => c.id === Number(classMatch[1]))
@@ -23,25 +23,26 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
             ? classCourse.subject
             : classCourse.sub
         : undefined;
+    const isTodo = pathname.startsWith("/todo");
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
-            {/* Left: menu + brand + current class */}
+            {/* Left: menu + brand + breadcrumb */}
             <div className="flex min-w-0 items-center gap-1">
                 <IconButton label="Open menu" onClick={onMenuClick}>
                     <Menu className="h-6 w-6" />
                 </IconButton>
-                <a href="/" className="ml-1 flex shrink-0 items-center gap-3">
+                <Link href="/" className="ml-1 flex shrink-0 items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#188038]">
                         <GraduationCap className="h-6 w-6 text-white" />
                     </span>
-                    <span className="text-[22px] text-gray-700 max-sm:hidden">Classroom</span>
-                </a>
+                    <span className="text-[22px] text-gray-700 max-sm:hidden">E-Classroom Pro</span>
+                </Link>
 
-                {/* Clickable class breadcrumb -> class home page */}
+                {/* Class breadcrumb */}
                 {classCourse && (
                     <Link
-                        href={`/classes/${classCourse.id}`}
+                        href={`/class/${classCourse.id}`}
                         title={classCourse.name}
                         className="flex min-w-0 items-center rounded-full py-1 pl-1 pr-3 transition-colors hover:bg-gray-900/5"
                     >
@@ -56,11 +57,19 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
                         </span>
                     </Link>
                 )}
+
+                {/* To-do breadcrumb */}
+                {isTodo && (
+                    <span className="flex min-w-0 items-center">
+                        <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
+                        <span className="truncate text-[15px] font-medium text-gray-800">To-do</span>
+                    </span>
+                )}
             </div>
 
             {/* Right: actions */}
             <div className="flex shrink-0 items-center gap-1">
-                {!classCourse && (
+                {!classCourse && !isTodo && (
                     <IconButton label="Create">
                         <Plus className="h-6 w-6" />
                     </IconButton>

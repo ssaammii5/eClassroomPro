@@ -66,7 +66,7 @@ export function StudentWorkView({ work, courseId }: StudentWorkViewProps) {
                         <TaskRow
                             key={task.id}
                             task={task}
-                            onClick={() => router.push(`/classes/${courseId}/assignments/${task.id}`)}
+                            onClick={() => router.push(`/class/${courseId}/assignments/${task.id}`)}
                         />
                     ))}
                 </ul>
