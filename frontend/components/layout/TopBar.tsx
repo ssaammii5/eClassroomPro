@@ -2,15 +2,18 @@
 
 import { useState } from "react";
 import {
+    Bell,
     CalendarDays,
     ChevronRight,
+    ClipboardList,
     GraduationCap,
-    Grip,
     LogOut,
     Menu,
-    Plus,
+    MessageSquare,
     Settings,
+    Star,
     X,
+    type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -23,10 +26,57 @@ interface TopBarProps {
     onMenuClick: () => void;
 }
 
+interface NotificationItem {
+    id: number;
+    kind: "assignment" | "comment" | "due" | "grade";
+    title: string;
+    time: string;
+}
+
+const NOTIFICATION_META: Record<
+    NotificationItem["kind"],
+    { icon: LucideIcon; classes: string }
+> = {
+    assignment: { icon: ClipboardList, classes: "bg-[#d7e3fd] text-[#174ea6]" },
+    comment: { icon: MessageSquare, classes: "bg-[#ceead6] text-[#137333]" },
+    due: { icon: CalendarDays, classes: "bg-[#fef7e0] text-[#b06000]" },
+    grade: { icon: Star, classes: "bg-[#fce8e6] text-[#c5221f]" },
+};
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+    {
+        id: 1,
+        kind: "assignment",
+        title: "New assignment: CIT-6105 Research Assignment",
+        time: "2 hours ago",
+    },
+    {
+        id: 2,
+        kind: "comment",
+        title: "Md. Mahbubur Rahman commented on your submission",
+        time: "6 hours ago",
+    },
+    {
+        id: 3,
+        kind: "due",
+        title: "Lab 1 - Substitution Cipher is due tomorrow at 11:59 PM",
+        time: "1 day ago",
+    },
+    {
+        id: 4,
+        kind: "grade",
+        title: "Quiz 1 - Classical Ciphers graded: 9/10",
+        time: "2 days ago",
+    },
+];
+
 export function TopBar({ onMenuClick }: TopBarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const [accountOpen, setAccountOpen] = useState(false);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const [notifications, setNotifications] =
+        useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
 
     const classMatch = pathname.match(/^\/class\/(\d+)/);
     const classCourse = classMatch
@@ -44,6 +94,16 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
     const parts = currentUser.name.trim().split(/\s+/);
     const greetName = parts.length > 2 ? parts[1] : parts[0];
+
+    const toggleAccount = () => {
+        setNotifOpen(false);
+        setAccountOpen((v) => !v);
+    };
+
+    const toggleNotif = () => {
+        setAccountOpen(false);
+        setNotifOpen((v) => !v);
+    };
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
@@ -103,28 +163,98 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 )}
             </div>
 
-            {/* Right: actions + account */}
+            {/* Right: actions + notifications + account */}
             <div className="flex shrink-0 items-center gap-1">
-                {!classCourse && !isTodo && !isCalendar && !isSettings && (
-                    <IconButton label="Create">
-                        <Plus className="h-6 w-6" />
-                    </IconButton>
-                )}
                 {isCalendar && (
                     <IconButton label="Calendar">
                         <CalendarDays className="h-6 w-6" />
                     </IconButton>
                 )}
-                <IconButton label="Apps">
-                    <Grip className="h-6 w-6" />
-                </IconButton>
+
+                {/* Notifications bell + panel */}
+                <div className="relative">
+                    <button
+                        type="button"
+                        aria-label="Notifications"
+                        onClick={toggleNotif}
+                        className={`relative z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-900/10 ${notifOpen ? "bg-gray-900/10" : ""
+                            }`}
+                    >
+                        <Bell className="h-6 w-6" />
+                        {notifications.length > 0 && (
+                            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#d93025] px-1 text-[10px] font-medium text-white">
+                                {notifications.length}
+                            </span>
+                        )}
+                    </button>
+
+                    {notifOpen && (
+                        <>
+                            {/* click-away backdrop */}
+                            <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+
+                            <div className="absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl bg-[#e9eef4] shadow-xl">
+                                {/* Panel header */}
+                                <div className="flex items-center justify-between px-5 py-4">
+                                    <span className="text-base font-medium text-gray-900">Notifications</span>
+                                    <button
+                                        type="button"
+                                        disabled={notifications.length === 0}
+                                        onClick={() => setNotifications([])}
+                                        className="cursor-pointer text-sm font-medium text-[#1a73e8] hover:underline disabled:cursor-default disabled:text-gray-500 disabled:no-underline"
+                                    >
+                                        Clear all
+                                    </button>
+                                </div>
+
+                                {/* Panel body */}
+                                <div className="max-h-[420px] overflow-y-auto border-t border-gray-300/60">
+                                    {notifications.length === 0 ? (
+                                        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+                                            <Bell className="h-8 w-8 text-gray-400" />
+                                            <p className="text-sm text-gray-600">No new notifications</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="divide-y divide-gray-300/50">
+                                            {notifications.map((n) => {
+                                                const meta = NOTIFICATION_META[n.kind];
+                                                const Icon = meta.icon;
+                                                return (
+                                                    <li key={n.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setNotifOpen(false)}
+                                                            className="flex w-full cursor-pointer items-start gap-4 px-5 py-4 text-left hover:bg-gray-900/5"
+                                                        >
+                                                            <span
+                                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${meta.classes}`}
+                                                            >
+                                                                <Icon className="h-5 w-5" />
+                                                            </span>
+                                                            <span className="min-w-0">
+                                                                <span className="block text-sm leading-5 text-gray-900">
+                                                                    {n.title}
+                                                                </span>
+                                                                <span className="mt-1 block text-xs text-gray-600">{n.time}</span>
+                                                            </span>
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
 
                 {/* Account avatar + dropdown */}
                 <div className="relative ml-2">
                     <button
                         type="button"
                         aria-label="Account"
-                        onClick={() => setAccountOpen((v) => !v)}
+                        onClick={toggleAccount}
                         className={`relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-sm font-medium text-white ring-2 ring-transparent transition-shadow hover:ring-gray-400/60 ${currentUser.avatarClass}`}
                     >
                         {initialOf(currentUser.name)}
