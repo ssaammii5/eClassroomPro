@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, GraduationCap, Grip, Menu, Plus } from "lucide-react";
+import { CalendarDays, ChevronRight, GraduationCap, Grip, Menu, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconButton } from "@/components/ui/IconButton";
@@ -24,6 +24,8 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
             : classCourse.sub
         : undefined;
     const isTodo = pathname.startsWith("/todo");
+    const isSettings = pathname.startsWith("/settings");
+    const isCalendar = pathname.startsWith("/calendar");
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
@@ -36,7 +38,7 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#188038]">
                         <GraduationCap className="h-6 w-6 text-white" />
                     </span>
-                    <span className="text-[22px] text-gray-700 max-sm:hidden">E-Classroom Pro</span>
+                    <span className="text-[22px] text-gray-700 max-sm:hidden">Classroom</span>
                 </Link>
 
                 {/* Class breadcrumb */}
@@ -65,13 +67,34 @@ export function TopBar({ onMenuClick, userInitial = "M" }: TopBarProps) {
                         <span className="truncate text-[15px] font-medium text-gray-800">To-do</span>
                     </span>
                 )}
+
+                {/* Calendar breadcrumb */}
+                {isCalendar && (
+                    <span className="flex min-w-0 items-center">
+                        <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
+                        <span className="truncate text-[15px] font-medium text-gray-800">Calendar</span>
+                    </span>
+                )}
+
+                {/* Settings breadcrumb */}
+                {isSettings && (
+                    <span className="flex min-w-0 items-center">
+                        <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
+                        <span className="truncate text-[15px] font-medium text-gray-800">Settings</span>
+                    </span>
+                )}
             </div>
 
             {/* Right: actions */}
             <div className="flex shrink-0 items-center gap-1">
-                {!classCourse && !isTodo && (
+                {!classCourse && !isTodo && !isSettings && !isCalendar && (
                     <IconButton label="Create">
                         <Plus className="h-6 w-6" />
+                    </IconButton>
+                )}
+                {isCalendar && (
+                    <IconButton label="Calendar">
+                        <CalendarDays className="h-6 w-6" />
                     </IconButton>
                 )}
                 <IconButton label="Apps">

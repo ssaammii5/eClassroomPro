@@ -10,6 +10,8 @@ import {
     ListTodo,
     Settings,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { sidebarClasses } from "@/lib/mock-data";
 
 interface SidebarProps {
@@ -19,6 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ open, onExpand }: SidebarProps) {
     const [enrolledOpen, setEnrolledOpen] = useState(true);
+    const pathname = usePathname();
 
     return (
         <aside
@@ -28,8 +31,20 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
                 }`}
         >
             <nav className="flex flex-col gap-0.5">
-                <NavItem open={open} active href="/" icon={<House className="h-6 w-6" />} label="Home" />
-                <NavItem open={open} href="#" icon={<CalendarDays className="h-6 w-6" />} label="Calendar" />
+                <NavItem
+                    open={open}
+                    active={pathname === "/"}
+                    href="/"
+                    icon={<House className="h-6 w-6" />}
+                    label="Home"
+                />
+                <NavItem
+                    open={open}
+                    active={pathname.startsWith("/calendar")}
+                    href="/calendar"
+                    icon={<CalendarDays className="h-6 w-6" />}
+                    label="Calendar"
+                />
                 {open && <div className="my-2 h-px bg-gray-300/70" />}
 
                 {/* Enrolled */}
@@ -60,14 +75,20 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
                 )}
 
                 {/* To-do */}
-                <NavItem open={open} href="#" icon={<ListTodo className="h-6 w-6" />} label="To-do" />
+                <NavItem
+                    open={open}
+                    active={pathname.startsWith("/todo")}
+                    href="/todo"
+                    icon={<ListTodo className="h-6 w-6" />}
+                    label="To-do"
+                />
 
                 {open && enrolledOpen && (
                     <>
                         {sidebarClasses.map((c) => (
-                            <a
+                            <Link
                                 key={c.id}
-                                href="#"
+                                href={`/class/${c.id}`}
                                 className="flex items-center gap-3 rounded-full py-2 pl-4 pr-4 hover:bg-gray-900/5"
                             >
                                 <span
@@ -79,12 +100,18 @@ export function Sidebar({ open, onExpand }: SidebarProps) {
                                     <span className="block truncate text-sm text-gray-800">{c.name}</span>
                                     {c.sub && <span className="block truncate text-xs text-gray-600">{c.sub}</span>}
                                 </span>
-                            </a>
+                            </Link>
                         ))}
                     </>
                 )}
 
-                <NavItem open={open} href="#" icon={<Settings className="h-6 w-6" />} label="Settings" />
+                <NavItem
+                    open={open}
+                    active={pathname.startsWith("/settings")}
+                    href="/settings"
+                    icon={<Settings className="h-6 w-6" />}
+                    label="Settings"
+                />
             </nav>
         </aside>
     );
