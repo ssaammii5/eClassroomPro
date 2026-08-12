@@ -105,11 +105,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
-            {/* Left */}
+            {/* Left: menu, logo, breadcrumbs */}
             <div className="flex min-w-0 items-center gap-1">
                 <IconButton label="Open menu" onClick={onMenuClick}>
                     <Menu className="h-6 w-6" />
                 </IconButton>
+
                 <Link href="/" className="ml-1 flex shrink-0 items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#188038]">
                         <GraduationCap className="h-6 w-6 text-white" />
@@ -161,7 +162,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 )}
             </div>
 
-            {/* Right */}
+            {/* Right: actions */}
             <div className="flex shrink-0 items-center gap-1">
                 {isCalendar && (
                     <IconButton label="Calendar">
@@ -191,7 +192,13 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                             {/* Backdrop */}
                             <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
 
-                            <div className="absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl bg-[#e9eef4] shadow-xl">
+                            {/*
+                Panel:
+                - sm and up: 380px dropdown anchored to the bell button.
+                - below sm: full-width sheet pinned under the TopBar
+                  (fixed inset-x-2) so it never overflows the viewport.
+              */}
+                            <div className="absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl bg-[#e9eef4] shadow-xl max-sm:fixed max-sm:inset-x-2 max-sm:top-[4.5rem] max-sm:mt-0 max-sm:w-auto">
                                 {/* Header */}
                                 <div className="flex items-center justify-between px-5 py-4">
                                     <span className="text-base font-medium text-gray-900">Notifications</span>
@@ -205,8 +212,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </button>
                                 </div>
 
-                                {/* List */}
-                                <div className="max-h-[420px] overflow-y-auto border-t border-gray-300/60">
+                                {/* List — height capped to the viewport on small/short screens */}
+                                <div className="max-h-[420px] overflow-y-auto border-t border-gray-300/60 max-sm:max-h-[min(26.25rem,calc(100dvh-9rem))]">
                                     {notifications.length === 0 ? (
                                         <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
                                             <Bell className="h-8 w-8 text-gray-400" />
@@ -264,7 +271,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                             <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
 
                             <div className="absolute right-0 top-full z-50 mt-3 w-[340px] rounded-2xl bg-[#e9eef4] p-5 shadow-xl">
-                                {/* Email */}
+                                {/* Email + close */}
                                 <div className="relative text-center">
                                     <p className="truncate text-sm text-gray-800">{currentUser.email}</p>
                                     <button
@@ -286,7 +293,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </span>
                                 </div>
 
-                                {/* Greeting — full name */}
+                                {/* Name */}
                                 <p
                                     title={currentUser.name}
                                     className="mt-4 truncate px-2 text-center text-xl text-gray-900"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
     CalendarDays,
@@ -14,106 +14,167 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { sidebarClasses } from "@/lib/mock-data";
 
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
 interface SidebarProps {
     open: boolean;
+    /**
+     * False until the client has measured the viewport. Prevents the mobile
+     * drawer from flashing open on first paint (hidden until then).
+     */
+    mobileReady?: boolean;
     onExpand?: () => void;
+    onClose?: () => void;
 }
 
-export function Sidebar({ open, onExpand }: SidebarProps) {
+export function Sidebar({ open, mobileReady = true, onExpand, onClose }: SidebarProps) {
     const [enrolledOpen, setEnrolledOpen] = useState(true);
     const pathname = usePathname();
+    const prevPathname = useRef(pathname);
+
+    // Close the drawer after navigating to a new page (mobile/tablet only).
+    useEffect(() => {
+        if (prevPathname.current === pathname) return;
+        prevPathname.current = pathname;
+        if (typeof window !== "undefined" && !window.matchMedia(DESKTOP_QUERY).matches) {
+            onClose?.();
+        }
+    }, [pathname, onClose]);
+
+    // Lock page scroll while the drawer is open (mobile/tablet only).
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const mq = window.matchMedia(DESKTOP_QUERY);
+        const update = () => {
+            document.body.style.overflow = open && !mq.matches ? "hidden" : "";
+        };
+        update();
+        mq.addEventListener("change", update);
+        return () => {
+            mq.removeEventListener("change", update);
+            document.body.style.overflow = "";
+        };
+    }, [open]);
+
+    // Close the drawer with the Escape key (mobile/tablet only).
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape" && !window.matchMedia(DESKTOP_QUERY).matches) onClose?.();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [onClose]);
+
+    // Below `lg` the sidebar becomes a slide-in drawer; desktop is untouched.
+    const mobileClasses = !mobileReady
+        ? "max-lg:hidden"
+        : open
+            ? "max-lg:fixed max-lg:left-0 max-lg:top-16 max-lg:z-30 max-lg:h-[calc(100dvh-4rem)] max-lg:max-w-[85vw] max-lg:translate-x-0 max-lg:bg-[#eef1f4] max-lg:shadow-xl"
+            : "max-lg:fixed max-lg:left-0 max-lg:top-16 max-lg:z-30 max-lg:h-[calc(100dvh-4rem)] max-lg:w-[300px] max-lg:max-w-[85vw] max-lg:-translate-x-full max-lg:invisible max-lg:pointer-events-none max-lg:bg-[#eef1f4]";
 
     return (
-        <aside
-            className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${open
-                    ? "w-[300px] px-2 max-lg:fixed max-lg:left-0 max-lg:top-16 max-lg:z-30 max-lg:bg-[#eef1f4] max-lg:shadow-xl"
-                    : "w-[72px] px-1.5 max-lg:hidden"
-                }`}
-        >
-            <nav className="flex flex-col gap-0.5">
-                <NavItem
-                    open={open}
-                    active={pathname === "/"}
-                    href="/"
-                    icon={<House className="h-6 w-6" />}
-                    label="Home"
+        <>
+            {/* Backdrop behind the drawer (mobile/tablet only) */}
+            {mobileReady && open && (
+                <div
+                    className="fixed inset-0 top-16 z-20 bg-black/40 lg:hidden"
+                    aria-hidden
+                    onClick={onClose}
                 />
-                <NavItem
-                    open={open}
-                    active={pathname.startsWith("/calendar")}
-                    href="/calendar"
-                    icon={<CalendarDays className="h-6 w-6" />}
-                    label="Calendar"
-                />
-                {open && <div className="my-2 h-px bg-gray-300/70" />}
+            )}
 
-                {/* Enrolled */}
-                {open ? (
-                    <button
-                        type="button"
-                        onClick={() => setEnrolledOpen((v) => !v)}
-                        className="flex items-center justify-between rounded-full px-6 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-900/5"
-                    >
-                        <span className="flex items-center gap-4">
-                            <GraduationCap className="h-6 w-6 text-gray-600" />
-                            Enrolled
-                        </span>
-                        <ChevronUp
-                            className={`h-5 w-5 text-gray-600 transition-transform ${enrolledOpen ? "" : "rotate-180"}`}
-                        />
-                    </button>
-                ) : (
-                    <button
-                        type="button"
-                        title="Enrolled"
-                        aria-label="Enrolled"
-                        onClick={onExpand}
-                        className="my-2 flex h-11 w-full items-center justify-center rounded-full text-gray-700 hover:bg-gray-900/5"
-                    >
-                        <GraduationCap className="h-6 w-6" />
-                    </button>
-                )}
+            <aside
+                className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${mobileClasses} ${open ? "w-[300px] px-2" : "w-[72px] px-1.5"
+                    }`}
+            >
+                <nav className="flex flex-col gap-0.5">
+                    <NavItem
+                        open={open}
+                        active={pathname === "/"}
+                        href="/"
+                        icon={<House className="h-6 w-6" />}
+                        label="Home"
+                    />
+                    <NavItem
+                        open={open}
+                        active={pathname.startsWith("/calendar")}
+                        href="/calendar"
+                        icon={<CalendarDays className="h-6 w-6" />}
+                        label="Calendar"
+                    />
 
-                {/* To-do */}
-                <NavItem
-                    open={open}
-                    active={pathname.startsWith("/todo")}
-                    href="/todo"
-                    icon={<ListTodo className="h-6 w-6" />}
-                    label="To-do"
-                />
+                    {open && <div className="my-2 h-px bg-gray-300/70" />}
 
-                {open && enrolledOpen && (
-                    <>
-                        {sidebarClasses.map((c) => (
-                            <Link
-                                key={c.id}
-                                href={`/class/${c.id}`}
-                                className="flex items-center gap-3 rounded-full py-2 pl-4 pr-4 hover:bg-gray-900/5"
-                            >
-                                <span
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium ${c.avatarClass}`}
+                    {/* Enrolled */}
+                    {open ? (
+                        <button
+                            type="button"
+                            onClick={() => setEnrolledOpen((v) => !v)}
+                            className="flex items-center justify-between rounded-full px-6 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-900/5"
+                        >
+                            <span className="flex items-center gap-4">
+                                <GraduationCap className="h-6 w-6 text-gray-600" />
+                                Enrolled
+                            </span>
+                            <ChevronUp
+                                className={`h-5 w-5 text-gray-600 transition-transform ${enrolledOpen ? "" : "rotate-180"
+                                    }`}
+                            />
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            title="Enrolled"
+                            aria-label="Enrolled"
+                            onClick={onExpand}
+                            className="my-2 flex h-11 w-full items-center justify-center rounded-full text-gray-700 hover:bg-gray-900/5"
+                        >
+                            <GraduationCap className="h-6 w-6" />
+                        </button>
+                    )}
+
+                    {/* To-do */}
+                    <NavItem
+                        open={open}
+                        active={pathname.startsWith("/todo")}
+                        href="/todo"
+                        icon={<ListTodo className="h-6 w-6" />}
+                        label="To-do"
+                    />
+
+                    {open && enrolledOpen && (
+                        <>
+                            {sidebarClasses.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/class/${c.id}`}
+                                    className="flex items-center gap-3 rounded-full py-2 pl-4 pr-4 hover:bg-gray-900/5"
                                 >
-                                    {c.letter}
-                                </span>
-                                <span className="min-w-0">
-                                    <span className="block truncate text-sm text-gray-800">{c.name}</span>
-                                    {c.sub && <span className="block truncate text-xs text-gray-600">{c.sub}</span>}
-                                </span>
-                            </Link>
-                        ))}
-                    </>
-                )}
+                                    <span
+                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium ${c.avatarClass}`}
+                                    >
+                                        {c.letter}
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm text-gray-800">{c.name}</span>
+                                        {c.sub && <span className="block truncate text-xs text-gray-600">{c.sub}</span>}
+                                    </span>
+                                </Link>
+                            ))}
+                        </>
+                    )}
 
-                <NavItem
-                    open={open}
-                    active={pathname.startsWith("/settings")}
-                    href="/settings"
-                    icon={<Settings className="h-6 w-6" />}
-                    label="Settings"
-                />
-            </nav>
-        </aside>
+                    <NavItem
+                        open={open}
+                        active={pathname.startsWith("/settings")}
+                        href="/settings"
+                        icon={<Settings className="h-6 w-6" />}
+                        label="Settings"
+                    />
+                </nav>
+            </aside>
+        </>
     );
 }
 
@@ -145,10 +206,13 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             </a>
         );
     }
+
     return (
         <a
             href={href}
-            className={`flex items-center gap-4 rounded-full px-6 py-2.5 text-sm ${active ? "bg-[#cfe8fc] font-medium text-gray-900" : "text-gray-800 hover:bg-gray-900/5"
+            className={`flex items-center gap-4 rounded-full px-6 py-2.5 text-sm ${active
+                    ? "bg-[#cfe8fc] font-medium text-gray-900"
+                    : "text-gray-800 hover:bg-gray-900/5"
                 }`}
         >
             <span className={`relative ${active ? "text-[#1a73e8]" : "text-gray-600"}`}>
