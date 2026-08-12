@@ -164,11 +164,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
             {/* Right: actions */}
             <div className="flex shrink-0 items-center gap-1">
-                {isCalendar && (
-                    <IconButton label="Calendar">
-                        <CalendarDays className="h-6 w-6" />
-                    </IconButton>
-                )}
 
                 {/* Notifications */}
                 <div className="relative">
