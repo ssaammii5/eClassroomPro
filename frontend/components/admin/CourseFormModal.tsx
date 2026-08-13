@@ -13,7 +13,6 @@ import { X, ChevronDown, Search, UserPlus, Users } from "lucide-react";
 
 const DEPARTMENT_OPTIONS: string[] = [...TEACHER_DEPARTMENTS];
 
-/* ─── Group enrollment tracking ─── */
 interface EnrolledGroup {
     program: string;
     department: string;
@@ -29,7 +28,6 @@ interface CourseFormModalProps {
 }
 
 export function CourseFormModal({ open, course, onSave, onClose }: CourseFormModalProps) {
-    /* ─── Course Details State ─── */
     const [program, setProgram] = useState("");
     const [department, setDepartment] = useState("");
     const [session, setSession] = useState("");
@@ -37,11 +35,9 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    /* ─── Teacher Selection State ─── */
     const [teacherDeptFilter, setTeacherDeptFilter] = useState("");
     const [teacherIds, setTeacherIds] = useState<number[]>([]);
 
-    /* ─── Student Selection State ─── */
     const [studentProgram, setStudentProgram] = useState("");
     const [studentDept, setStudentDept] = useState("");
     const [studentSession, setStudentSession] = useState("");
@@ -51,7 +47,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     const [manualStudentResults, setManualStudentResults] = useState<AdminUser[]>([]);
     const [showManualResults, setShowManualResults] = useState(false);
 
-    /* ─── Memoize static data ─── */
     const allTeachers = useMemo(
         () => adminUsers.filter((u) => u.role === "Teacher" && u.isActive),
         []
@@ -61,17 +56,14 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         []
     );
 
-    /* ─── Ref to track last applied group filter ─── */
     const lastAppliedGroupFilter = useRef<string>("");
 
-    /* ─── Filtered course names based on program + department ─── */
     const availableCourses = useMemo(() => {
         return COURSE_CATALOG.filter(
             (c) => c.program === program && c.department === department
         );
     }, [program, department]);
 
-    /* ─── Filtered teachers by department ─── */
     const filteredTeachers = useMemo(() => {
         if (!teacherDeptFilter) return [];
         return allTeachers.filter(
@@ -79,19 +71,49 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         );
     }, [allTeachers, teacherDeptFilter]);
 
-    /* ─── Get unique student sessions for dropdown ─── */
     const studentSessionOptions = useMemo(() => {
         return Array.from(
             new Set(allStudents.map((s) => s.studentDetails?.semesterSession ?? "").filter(Boolean))
         ).sort();
     }, [allStudents]);
 
-    /* ─── Compute total enrolled students count ─── */
     const totalEnrolledCount = useMemo(() => {
         const groupIds = new Set(enrolledGroups.flatMap((g) => g.studentIds));
         const manualIds = new Set(manualStudentIds);
         return new Set([...groupIds, ...manualIds]).size;
     }, [enrolledGroups, manualStudentIds]);
+
+    /* ─── Helper: Build groups from a list of student IDs ─── */
+    const buildGroupsFromStudentIds = (ids: number[]): { groups: EnrolledGroup[]; manual: number[] } => {
+        const groupMap = new Map<string, EnrolledGroup>();
+        const manual: number[] = [];
+
+        for (const id of ids) {
+            const student = allStudents.find((s) => s.id === id);
+            if (!student?.studentDetails) {
+                manual.push(id);
+                continue;
+            }
+
+            const d = student.studentDetails;
+            const prog = d.currentProgram ?? "";
+            const dept = d.department ?? "";
+            const sess = d.semesterSession ?? "";
+
+            if (!prog || !dept || !sess) {
+                manual.push(id);
+                continue;
+            }
+
+            const key = `${prog}|${dept}|${sess}`;
+            if (!groupMap.has(key)) {
+                groupMap.set(key, { program: prog, department: dept, session: sess, studentIds: [] });
+            }
+            groupMap.get(key)!.studentIds.push(id);
+        }
+
+        return { groups: Array.from(groupMap.values()), manual };
+    };
 
     /* ─── Auto-enroll group when filters are set ─── */
     useEffect(() => {
@@ -117,7 +139,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             const groupIds = matched.map((s) => s.id);
 
             setEnrolledGroups((prev) => {
-                // Check if this exact group already exists
                 const exists = prev.some(
                     (g) => g.program === studentProgram && g.department === studentDept && g.session === studentSession
                 );
@@ -125,7 +146,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                 return [...prev, { program: studentProgram, department: studentDept, session: studentSession, studentIds: groupIds }];
             });
         }
-    }, [studentProgram, studentDept, studentSession, allStudents]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studentProgram, studentDept, studentSession]);
 
     /* ─── Initialize form on open ─── */
     useEffect(() => {
@@ -141,19 +163,21 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             setStudentProgram("");
             setStudentDept("");
             setStudentSession("");
-            setEnrolledGroups([]);
             setManualStudentSearch("");
             setManualStudentResults([]);
             setShowManualResults(false);
             lastAppliedGroupFilter.current = "";
 
-            // When editing, load existing students as manual (no group info stored)
             if (course?.studentIds && course.studentIds.length > 0) {
-                setManualStudentIds([...course.studentIds]);
+                const { groups, manual } = buildGroupsFromStudentIds(course.studentIds);
+                setEnrolledGroups(groups);
+                setManualStudentIds(manual);
             } else {
+                setEnrolledGroups([]);
                 setManualStudentIds([]);
             }
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, course]);
 
     /* ─── Cascade reset handlers ─── */
@@ -203,12 +227,10 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         lastAppliedGroupFilter.current = "";
     };
 
-    /* ─── Remove entire group ─── */
     const removeGroup = (index: number) => {
         setEnrolledGroups((prev) => prev.filter((_, i) => i !== index));
     };
 
-    /* ─── Manual student search ─── */
     const handleManualSearch = (value: string) => {
         setManualStudentSearch(value);
         if (value.trim().length >= 2) {
@@ -240,7 +262,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         setManualStudentIds((prev) => prev.filter((s) => s !== id));
     };
 
-    /* ─── Toggle handlers ─── */
     const toggleTeacher = (id: number) => {
         setTeacherIds((prev) =>
             prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
@@ -255,14 +276,12 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             return next;
         });
 
-    /* ─── Get all student IDs for saving ─── */
     const getAllStudentIds = (): number[] => {
         const groupIds = enrolledGroups.flatMap((g) => g.studentIds);
         const allIds = new Set([...groupIds, ...manualStudentIds]);
         return Array.from(allIds);
     };
 
-    /* ─── Validation ─── */
     const validate = () => {
         const next: Record<string, string> = {};
         if (!program) next.program = "Program is required.";
@@ -313,7 +332,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">Course Details</h3>
                         <div className="grid gap-5 md:grid-cols-2">
-                            {/* Program */}
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                     Program <span className="text-[#c5221f]">*</span>
@@ -337,7 +355,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 {errors.program && <span className="mt-1 block text-sm text-[#c5221f]">{errors.program}</span>}
                             </div>
 
-                            {/* Department */}
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                     Department <span className="text-[#c5221f]">*</span>
@@ -361,7 +378,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 {errors.department && <span className="mt-1 block text-sm text-[#c5221f]">{errors.department}</span>}
                             </div>
 
-                            {/* Session */}
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                     Session <span className="text-[#c5221f]">*</span>
@@ -385,7 +401,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 {errors.session && <span className="mt-1 block text-sm text-[#c5221f]">{errors.session}</span>}
                             </div>
 
-                            {/* Course Name */}
                             <div>
                                 <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                     Course Name <span className="text-[#c5221f]">*</span>
@@ -602,7 +617,7 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             </div>
                         </div>
 
-                        {/* ─── Enrolled Groups Display ─── */}
+                        {/* Enrolled Groups Display */}
                         {enrolledGroups.length > 0 && (
                             <div className="mb-4">
                                 <p className="mb-2 text-sm font-medium text-gray-700">
@@ -637,7 +652,7 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             </div>
                         )}
 
-                        {/* ─── Manually Enrolled Students Display ─── */}
+                        {/* Manually Enrolled Students Display */}
                         {manualStudentIds.length > 0 && (
                             <div>
                                 <p className="mb-2 text-sm font-medium text-gray-700">
