@@ -185,6 +185,9 @@ export interface AdminAssignment {
     id: number;
     courseId: number;
     courseName: string;
+    program: string;
+    department: string;
+    session: string;
     title: string;
     description: string;
     deadline: string;
@@ -813,12 +816,90 @@ export const adminCourses: AdminCourse[] = [
 ];
 
 export const adminAssignments: AdminAssignment[] = [
-    { id: 1, courseId: 4, courseName: "CIT-6105: Information Security", title: "CIT-6105 Research Assignment", description: "Follow IEEE Conference Paper format", deadline: "2025-09-16", maxMarks: 100, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-10-04", submissionCount: 18 },
-    { id: 2, courseId: 4, courseName: "CIT-6105: Information Security", title: "Lab 1 - Substitution Cipher", description: "Implement Caesar and Vigenère ciphers", deadline: "2025-07-30", maxMarks: 50, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-20", submissionCount: 28 },
-    { id: 3, courseId: 4, courseName: "CIT-6105: Information Security", title: "Quiz 1 - Classical Ciphers", description: "10 multiple-choice questions", deadline: "2025-07-12", maxMarks: 10, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-05", submissionCount: 30 },
-    { id: 4, courseId: 1, courseName: "CIT-6102: Advanced Algorithms", title: "Quiz 2 - Hashing", description: "Hash functions and collision resolution", deadline: "2025-08-20", maxMarks: 20, status: "Published", createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-10", submissionCount: 12 },
-    { id: 5, courseId: 3, courseName: "CIT-5109: Natural Language Processing", title: "CIT-6109 Research Work", description: "NLP research paper analysis", deadline: "2025-08-16", maxMarks: 100, status: "Published", createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-08-01", submissionCount: 8 },
-    { id: 6, courseId: 1, courseName: "CIT-6102: Advanced Algorithms", title: "Assignment on Dynamic Programming", description: "Solve DP problems", deadline: "2025-09-01", maxMarks: 50, status: "Draft", createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-15", submissionCount: 0 },
+    {
+        id: 1, courseId: 4, courseName: "CIT-6105: Information Security",
+        program: "Postgraduate", department: "CSE", session: "January-June/2024",
+        title: "CIT-6105 Research Assignment", description: "Follow IEEE Conference Paper format",
+        deadline: "2025-09-16", maxMarks: 100, status: "Published",
+        createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-10-04", submissionCount: 18,
+    },
+    {
+        id: 2, courseId: 4, courseName: "CIT-6105: Information Security",
+        program: "Postgraduate", department: "CSE", session: "January-June/2024",
+        title: "Lab 1 - Substitution Cipher", description: "Implement Caesar and Vigenère ciphers",
+        deadline: "2025-07-30", maxMarks: 50, status: "Published",
+        createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-20", submissionCount: 28,
+    },
+    {
+        id: 3, courseId: 4, courseName: "CIT-6105: Information Security",
+        program: "Postgraduate", department: "CSE", session: "January-June/2024",
+        title: "Quiz 1 - Classical Ciphers", description: "10 multiple-choice questions",
+        deadline: "2025-07-12", maxMarks: 10, status: "Published",
+        createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-05", submissionCount: 30,
+    },
+    {
+        id: 4, courseId: 1, courseName: "CIT-6102: Advanced Algorithms",
+        program: "Postgraduate", department: "CSE", session: "January-June/2025",
+        title: "Quiz 2 - Hashing", description: "Hash functions and collision resolution",
+        deadline: "2025-08-20", maxMarks: 20, status: "Published",
+        createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-10", submissionCount: 12,
+    },
+    {
+        id: 5, courseId: 3, courseName: "CIT-5109: Natural Language Processing",
+        program: "Postgraduate", department: "CSE", session: "January-June/2025",
+        title: "CIT-6109 Research Work", description: "NLP research paper analysis",
+        deadline: "2025-08-16", maxMarks: 100, status: "Published",
+        createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-08-01", submissionCount: 8,
+    },
+    {
+        id: 6, courseId: 1, courseName: "CIT-6102: Advanced Algorithms",
+        program: "Postgraduate", department: "CSE", session: "January-June/2025",
+        title: "Assignment on Dynamic Programming", description: "Solve DP problems",
+        deadline: "2025-09-01", maxMarks: 50, status: "Draft",
+        createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-15", submissionCount: 0,
+    },
+    {
+        id: 7, courseId: 6, courseName: "CCE 423: Cryptography and Network Security",
+        program: "Undergraduate", department: "CSE", session: "January-June/2024",
+        title: "Problem Set 1 - Symmetric Encryption", description: "AES and DES problems",
+        deadline: "2025-06-15", maxMarks: 30, status: "Published",
+        createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-06-01", submissionCount: 22,
+    },
+    {
+        id: 8, courseId: 6, courseName: "CCE 423: Cryptography and Network Security",
+        program: "Undergraduate", department: "CSE", session: "January-June/2024",
+        title: "Lab 2 - RSA Implementation", description: "Implement RSA key generation",
+        deadline: "2025-06-25", maxMarks: 40, status: "Published",
+        createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-06-10", submissionCount: 20,
+    },
+    {
+        id: 9, courseId: 7, courseName: "CSE 415: Operating Systems",
+        program: "Undergraduate", department: "CSE", session: "July-December/2024",
+        title: "Assignment 1 - Process Scheduling", description: "Implement FCFS and SJF schedulers",
+        deadline: "2025-08-10", maxMarks: 25, status: "Published",
+        createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-07-25", submissionCount: 15,
+    },
+    {
+        id: 10, courseId: 7, courseName: "CSE 415: Operating Systems",
+        program: "Undergraduate", department: "CSE", session: "July-December/2024",
+        title: "Quiz 1 - Memory Management", description: "Paging and segmentation concepts",
+        deadline: "2025-08-20", maxMarks: 15, status: "Draft",
+        createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-08-05", submissionCount: 0,
+    },
+    {
+        id: 11, courseId: 9, courseName: "EEE 301: Circuit Analysis",
+        program: "Undergraduate", department: "EEE", session: "January-June/2023",
+        title: "Problem Set - Kirchhoff's Laws", description: "Circuit analysis problems",
+        deadline: "2025-05-20", maxMarks: 20, status: "Published",
+        createdById: 41, createdBy: "Dr. Rafiqul Islam", createdAt: "2025-05-05", submissionCount: 10,
+    },
+    {
+        id: 12, courseId: 12, courseName: "BBA 201: Principles of Management",
+        program: "Undergraduate", department: "BBA", session: "January-June/2024",
+        title: "Case Study - Organizational Behavior", description: "Analyze a management case study",
+        deadline: "2025-06-30", maxMarks: 50, status: "Published",
+        createdById: 42, createdBy: "Dr. Nasreen Akter", createdAt: "2025-06-10", submissionCount: 8,
+    },
 ];
 
 export const adminSubmissions: AdminSubmission[] = [
