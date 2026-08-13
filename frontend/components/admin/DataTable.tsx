@@ -1,4 +1,3 @@
-// components/admin/DataTable.tsx
 "use client";
 
 import type { ReactNode } from "react";
@@ -8,6 +7,8 @@ interface Column<T> {
     header: string;
     render?: (item: T) => ReactNode;
     className?: string;
+    width?: string;
+    truncate?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -15,9 +16,18 @@ interface DataTableProps<T> {
     data: T[];
     keyExtractor: (item: T) => string | number;
     emptyMessage?: string;
+    tableLayout?: "auto" | "fixed";
+    minWidthClassName?: string;
 }
 
-export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No records found." }: DataTableProps<T>) {
+export function DataTable<T>({
+    columns,
+    data,
+    keyExtractor,
+    emptyMessage = "No records found.",
+    tableLayout = "auto",
+    minWidthClassName = "min-w-[800px]",
+}: DataTableProps<T>) {
     if (data.length === 0) {
         return (
             <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -28,27 +38,63 @@ export function DataTable<T>({ columns, data, keyExtractor, emptyMessage = "No r
 
     return (
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table className="w-full min-w-[800px] text-left">
+            <table
+                className={`w-full text-left ${tableLayout === "fixed" ? "table-fixed" : ""
+                    } ${minWidthClassName}`}
+            >
                 <thead>
                     <tr className="border-b border-gray-200 bg-[#f8f9fa]">
                         {columns.map((col) => (
                             <th
                                 key={col.key}
-                                className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-gray-600 ${col.className ?? ""}`}
+                                style={col.width ? { width: col.width } : undefined}
+                                className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-gray-600 ${col.className ?? ""
+                                    }`}
                             >
-                                {col.header}
+                                {col.truncate ? (
+                                    <div className="truncate" title={col.header}>
+                                        {col.header}
+                                    </div>
+                                ) : (
+                                    col.header
+                                )}
                             </th>
                         ))}
                     </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-100">
                     {data.map((item) => (
                         <tr key={keyExtractor(item)} className="transition-colors hover:bg-gray-50">
-                            {columns.map((col) => (
-                                <td key={col.key} className={`px-4 py-3.5 text-sm text-gray-800 ${col.className ?? ""}`}>
-                                    {col.render ? col.render(item) : (item as Record<string, unknown>)[col.key] as ReactNode}
-                                </td>
-                            ))}
+                            {columns.map((col) => {
+                                const content = col.render
+                                    ? col.render(item)
+                                    : ((item as Record<string, unknown>)[col.key] as ReactNode);
+
+                                const rawValue = col.render
+                                    ? undefined
+                                    : (item as Record<string, unknown>)[col.key];
+
+                                const truncateTitle =
+                                    typeof rawValue === "string" ? rawValue : undefined;
+
+                                return (
+                                    <td
+                                        key={col.key}
+                                        style={col.width ? { width: col.width } : undefined}
+                                        className={`px-4 py-3.5 text-sm text-gray-800 ${col.truncate ? "" : "break-words"
+                                            } ${col.className ?? ""}`}
+                                    >
+                                        {col.truncate ? (
+                                            <div className="truncate" title={truncateTitle}>
+                                                {content}
+                                            </div>
+                                        ) : (
+                                            content
+                                        )}
+                                    </td>
+                                );
+                            })}
                         </tr>
                     ))}
                 </tbody>

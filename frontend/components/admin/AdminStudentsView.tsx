@@ -209,11 +209,23 @@ export function AdminStudentsView() {
     };
 
     const columns = [
-        { key: "name", header: "Name" },
-        { key: "email", header: "Email" },
+        {
+            key: "name",
+            header: "Name",
+            width: "220px",
+            truncate: true,
+        },
+        {
+            key: "email",
+            header: "Email",
+            width: "240px",
+            truncate: true,
+        },
         {
             key: "studentId",
             header: "Student ID",
+            width: "140px",
+            truncate: true,
             render: (u: AdminUser) =>
                 u.studentDetails?.studentId ? (
                     <span className="text-sm text-gray-900">{u.studentDetails.studentId}</span>
@@ -224,6 +236,8 @@ export function AdminStudentsView() {
         {
             key: "semesterSession",
             header: "Semester",
+            width: "180px",
+            truncate: true,
             render: (u: AdminUser) =>
                 u.studentDetails?.semesterSession ? (
                     <span className="text-sm text-gray-900">{u.studentDetails.semesterSession}</span>
@@ -234,12 +248,18 @@ export function AdminStudentsView() {
         {
             key: "isActive",
             header: "Status",
+            width: "110px",
             render: (u: AdminUser) => <StatusBadge status={u.isActive ? "Active" : "Inactive"} />,
         },
-        { key: "createdAt", header: "Created" },
+        {
+            key: "createdAt",
+            header: "Created",
+            width: "120px",
+        },
         {
             key: "actions",
             header: "Actions",
+            width: "110px",
             className: "text-right",
             render: (u: AdminUser) => (
                 <div className="flex items-center justify-end gap-1">
@@ -431,6 +451,8 @@ export function AdminStudentsView() {
                                                 data={g.students}
                                                 keyExtractor={(u) => u.id}
                                                 emptyMessage="No students in this group."
+                                                tableLayout="fixed"
+                                                minWidthClassName="min-w-[1120px]"
                                             />
                                         </div>
                                     ))}
@@ -458,6 +480,8 @@ export function AdminStudentsView() {
                                 data={uncategorized}
                                 keyExtractor={(u) => u.id}
                                 emptyMessage="No students in this group."
+                                tableLayout="fixed"
+                                minWidthClassName="min-w-[1120px]"
                             />
                         </div>
                     </section>
