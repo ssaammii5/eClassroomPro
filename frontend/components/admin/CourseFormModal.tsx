@@ -1,18 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { AdminCourse } from "@/lib/adminData";
-import { adminUsers, TEACHER_DEPARTMENTS } from "@/lib/adminData";
-import { X, Search } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import type { AdminCourse, AdminUser } from "@/lib/adminData";
+import {
+    adminUsers,
+    COURSE_CATALOG,
+    AVAILABLE_SESSIONS,
+    TEACHER_DEPARTMENTS,
+} from "@/lib/adminData";
+import { PROGRAM_TYPES } from "@/components/settings/constants";
+import { X, Search, ChevronDown } from "lucide-react";
 
 const DEPARTMENT_OPTIONS: string[] = [...TEACHER_DEPARTMENTS];
-const SEMESTER_PERIODS = ["January-June", "July-December"];
-const START_YEAR = 2000;
-const END_YEAR = new Date().getFullYear() + 1;
-const YEAR_OPTIONS = Array.from(
-    { length: END_YEAR - START_YEAR + 1 },
-    (_, i) => String(START_YEAR + i)
-);
 
 interface CourseFormModalProps {
     open: boolean;
@@ -23,48 +22,67 @@ interface CourseFormModalProps {
 
 export function CourseFormModal({ open, course, onSave, onClose }: CourseFormModalProps) {
     const [name, setName] = useState("");
+    const [program, setProgram] = useState("");
     const [department, setDepartment] = useState("");
-    const [subject, setSubject] = useState("");
+    const [session, setSession] = useState("");
     const [teacherIds, setTeacherIds] = useState<number[]>([]);
     const [studentIds, setStudentIds] = useState<number[]>([]);
-    const [sessionPeriod, setSessionPeriod] = useState("");
-    const [sessionYear, setSessionYear] = useState("");
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const [teacherSearch, setTeacherSearch] = useState("");
+    /* Student filter states */
+    const [studentProgramFilter, setStudentProgramFilter] = useState("all");
+    const [studentDeptFilter, setStudentDeptFilter] = useState("all");
+    const [studentSessionFilter, setStudentSessionFilter] = useState("all");
     const [studentSearch, setStudentSearch] = useState("");
 
     const allTeachers = adminUsers.filter((u) => u.role === "Teacher" && u.isActive);
-    const allStudents = adminUsers.filter((u) => u.role === "Student" && u.isActive);
+    const allStudents = adminUsers.filter((u) => u.role === "Student");
 
-    const filteredTeachers = allTeachers.filter((t) =>
-        t.name.toLowerCase().includes(teacherSearch.toLowerCase())
-    );
-    const filteredStudents = allStudents.filter((s) =>
-        s.name.toLowerCase().includes(studentSearch.toLowerCase())
-    );
+    /* Group teachers by department */
+    const teachersByDept = useMemo(() => {
+        const map = new Map<string, AdminUser[]>();
+        for (const t of allTeachers) {
+            const dept = t.teacherDetails?.department ?? "Uncategorized";
+            if (!map.has(dept)) map.set(dept, []);
+            map.get(dept)!.push(t);
+        }
+        return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    }, [allTeachers]);
+
+    /* Get unique student sessions for filter */
+    const studentSessionOptions = useMemo(() => {
+        return Array.from(
+            new Set(allStudents.map((s) => s.studentDetails?.semesterSession ?? "").filter(Boolean))
+        ).sort();
+    }, [allStudents]);
+
+    /* Filtered students based on program, dept, session */
+    const filteredStudents = useMemo(() => {
+        return allStudents.filter((s) => {
+            const d = s.studentDetails;
+            const matchProgram = studentProgramFilter === "all" || d?.currentProgram === studentProgramFilter;
+            const matchDept = studentDeptFilter === "all" || d?.department === studentDeptFilter;
+            const matchSession = studentSessionFilter === "all" || d?.semesterSession === studentSessionFilter;
+            const matchSearch = s.name.toLowerCase().includes(studentSearch.toLowerCase());
+            return matchProgram && matchDept && matchSession && matchSearch;
+        });
+    }, [allStudents, studentProgramFilter, studentDeptFilter, studentSessionFilter, studentSearch]);
 
     useEffect(() => {
         if (open) {
             setName(course?.name ?? "");
+            setProgram(course?.program ?? "");
             setDepartment(course?.department ?? "");
-            setSubject(course?.subject ?? "");
+            setSession(course?.session ?? "");
             setTeacherIds(course?.teacherIds ?? []);
             setStudentIds(course?.studentIds ?? []);
             setIsActive(course?.isActive ?? true);
             setErrors({});
-            setTeacherSearch("");
+            setStudentProgramFilter("all");
+            setStudentDeptFilter("all");
+            setStudentSessionFilter("all");
             setStudentSearch("");
-
-            if (course?.session) {
-                const parts = course.session.split("/");
-                setSessionPeriod(parts[0] ?? "");
-                setSessionYear(parts[1] ?? "");
-            } else {
-                setSessionPeriod("");
-                setSessionYear("");
-            }
         }
     }, [open, course]);
 
@@ -90,9 +108,10 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
 
     const validate = () => {
         const next: Record<string, string> = {};
-        if (!name.trim()) next.name = "Course name is required.";
+        if (!name) next.name = "Course name is required.";
+        if (!program) next.program = "Program is required.";
         if (!department) next.department = "Department is required.";
-        if (!sessionPeriod || !sessionYear) next.session = "Session period and year are required.";
+        if (!session) next.session = "Session is required.";
         return next;
     };
 
@@ -102,12 +121,12 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         if (Object.keys(errs).length > 0) return;
 
         onSave({
-            name: name.trim(),
+            name,
+            program,
             department,
-            subject: subject.trim(),
             teacherIds,
             studentIds,
-            session: `${sessionPeriod}/${sessionYear}`,
+            session,
             isActive,
         });
     };
@@ -138,21 +157,49 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                         <label className="mb-1.5 block text-sm font-medium text-gray-800">
                             Course Name <span className="text-[#c5221f]">*</span>
                         </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => { setName(e.target.value); clearError("name"); }}
-                            placeholder="e.g., CIT-6102: Advanced Algorithms"
-                            className={`w-full rounded-md border px-3.5 py-2.5 text-[15px] focus:outline-none ${errors.name
-                                    ? "border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                    : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
-                                }`}
-                        />
+                        <div className="relative">
+                            <select
+                                value={name}
+                                onChange={(e) => { setName(e.target.value); clearError("name"); }}
+                                className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.name
+                                        ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                        : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                    } ${name ? "text-gray-900" : "text-gray-600"}`}
+                            >
+                                <option value="" disabled>Select course name</option>
+                                {COURSE_CATALOG.map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700" />
+                        </div>
                         {errors.name && <span className="mt-1 block text-sm text-[#c5221f]">{errors.name}</span>}
                     </div>
 
-                    {/* Department + Subject */}
+                    {/* Program + Department */}
                     <div className="grid gap-5 md:grid-cols-2">
+                        <div>
+                            <label className="mb-1.5 block text-sm font-medium text-gray-800">
+                                Program <span className="text-[#c5221f]">*</span>
+                            </label>
+                            <div className="relative">
+                                <select
+                                    value={program}
+                                    onChange={(e) => { setProgram(e.target.value); clearError("program"); }}
+                                    className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.program
+                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                        } ${program ? "text-gray-900" : "text-gray-600"}`}
+                                >
+                                    <option value="" disabled>Select program</option>
+                                    {PROGRAM_TYPES.map((p) => (
+                                        <option key={p} value={p}>{p}</option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700" />
+                            </div>
+                            {errors.program && <span className="mt-1 block text-sm text-[#c5221f]">{errors.program}</span>}
+                        </div>
                         <div>
                             <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                 Department <span className="text-[#c5221f]">*</span>
@@ -171,21 +218,9 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                         <option key={d} value={d}>{d}</option>
                                     ))}
                                 </select>
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700">
-                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                                </svg>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700" />
                             </div>
                             {errors.department && <span className="mt-1 block text-sm text-[#c5221f]">{errors.department}</span>}
-                        </div>
-                        <div>
-                            <label className="mb-1.5 block text-sm font-medium text-gray-800">Subject</label>
-                            <input
-                                type="text"
-                                value={subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                                placeholder="e.g., MS in CSIT"
-                                className="w-full rounded-md border border-gray-400/80 px-3.5 py-2.5 text-[15px] focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                            />
                         </div>
                     </div>
 
@@ -194,53 +229,26 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                         <label className="mb-1.5 block text-sm font-medium text-gray-800">
                             Session <span className="text-[#c5221f]">*</span>
                         </label>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <div className="relative">
-                                <select
-                                    value={sessionPeriod}
-                                    onChange={(e) => { setSessionPeriod(e.target.value); clearError("session"); }}
-                                    className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.session && !sessionPeriod
-                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
-                                        } ${sessionPeriod ? "text-gray-900" : "text-gray-600"}`}
-                                >
-                                    <option value="" disabled>Semester period</option>
-                                    {SEMESTER_PERIODS.map((p) => (
-                                        <option key={p} value={p}>{p}</option>
-                                    ))}
-                                </select>
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700">
-                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="relative">
-                                <select
-                                    value={sessionYear}
-                                    onChange={(e) => { setSessionYear(e.target.value); clearError("session"); }}
-                                    className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.session && !sessionYear
-                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
-                                        } ${sessionYear ? "text-gray-900" : "text-gray-600"}`}
-                                >
-                                    <option value="" disabled>Year</option>
-                                    {YEAR_OPTIONS.map((y) => (
-                                        <option key={y} value={y}>{y}</option>
-                                    ))}
-                                </select>
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700">
-                                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-                                </svg>
-                            </div>
+                        <div className="relative">
+                            <select
+                                value={session}
+                                onChange={(e) => { setSession(e.target.value); clearError("session"); }}
+                                className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.session
+                                        ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                        : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                    } ${session ? "text-gray-900" : "text-gray-600"}`}
+                            >
+                                <option value="" disabled>Select session</option>
+                                {AVAILABLE_SESSIONS.map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700" />
                         </div>
                         {errors.session && <span className="mt-1 block text-sm text-[#c5221f]">{errors.session}</span>}
-                        {sessionPeriod && sessionYear && (
-                            <p className="mt-2 text-xs text-gray-500">
-                                Stored as: <span className="font-medium text-gray-800">{sessionPeriod}/{sessionYear}</span>
-                            </p>
-                        )}
                     </div>
 
-                    {/* Assigned Teachers */}
+                    {/* Assigned Teachers - Grouped by Department */}
                     <div>
                         <label className="mb-1.5 block text-sm font-medium text-gray-800">
                             Assigned Teachers
@@ -250,42 +258,45 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 </span>
                             )}
                         </label>
-                        <div className="relative mb-2">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                            <input
-                                type="text"
-                                value={teacherSearch}
-                                onChange={(e) => setTeacherSearch(e.target.value)}
-                                placeholder="Search teachers..."
-                                className="w-full rounded-md border border-gray-400/80 py-2 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                            />
-                        </div>
-                        <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200">
-                            {filteredTeachers.length === 0 ? (
-                                <p className="px-4 py-3 text-sm text-gray-500">No teachers found.</p>
+                        <div className="max-h-52 overflow-y-auto rounded-md border border-gray-200">
+                            {teachersByDept.length === 0 ? (
+                                <p className="px-4 py-3 text-sm text-gray-500">No active teachers found.</p>
                             ) : (
-                                filteredTeachers.map((t) => (
-                                    <label
-                                        key={t.id}
-                                        className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={teacherIds.includes(t.id)}
-                                            onChange={() => toggleTeacher(t.id)}
-                                            className="h-4 w-4 accent-[#1a73e8]"
-                                        />
-                                        <span className="text-sm text-gray-900">{t.name}</span>
-                                        <span className="ml-auto text-xs text-gray-500">
-                                            {t.teacherDetails?.designation ?? ""}
-                                        </span>
-                                    </label>
+                                teachersByDept.map(([deptName, teachers]) => (
+                                    <div key={deptName}>
+                                        {/* Department header */}
+                                        <div className="sticky top-0 border-b border-gray-100 bg-[#f8f9fa] px-4 py-2">
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                                {deptName}
+                                            </span>
+                                        </div>
+                                        {/* Teachers in this department */}
+                                        {teachers.map((t) => (
+                                            <label
+                                                key={t.id}
+                                                className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={teacherIds.includes(t.id)}
+                                                    onChange={() => toggleTeacher(t.id)}
+                                                    className="h-4 w-4 accent-[#1a73e8]"
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="block truncate text-sm text-gray-900">{t.name}</span>
+                                                    <span className="block text-xs text-gray-500">
+                                                        {t.teacherDetails?.teacherId ?? "N/A"} • {t.teacherDetails?.department ?? "N/A"}
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
                                 ))
                             )}
                         </div>
                     </div>
 
-                    {/* Enrolled Students */}
+                    {/* Enrolled Students - With Filters */}
                     <div>
                         <label className="mb-1.5 block text-sm font-medium text-gray-800">
                             Enrolled Students
@@ -295,6 +306,42 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 </span>
                             )}
                         </label>
+
+                        {/* Student Filters */}
+                        <div className="mb-3 grid gap-3 rounded-md border border-gray-200 bg-[#f8f9fa] p-3 sm:grid-cols-3">
+                            <select
+                                value={studentProgramFilter}
+                                onChange={(e) => setStudentProgramFilter(e.target.value)}
+                                className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                            >
+                                <option value="all">All Programs</option>
+                                {PROGRAM_TYPES.map((p) => (
+                                    <option key={p} value={p}>{p}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={studentDeptFilter}
+                                onChange={(e) => setStudentDeptFilter(e.target.value)}
+                                className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                            >
+                                <option value="all">All Departments</option>
+                                {DEPARTMENT_OPTIONS.map((d) => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={studentSessionFilter}
+                                onChange={(e) => setStudentSessionFilter(e.target.value)}
+                                className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                            >
+                                <option value="all">All Sessions</option>
+                                {studentSessionOptions.map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Student Search */}
                         <div className="relative mb-2">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                             <input
@@ -305,9 +352,11 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 className="w-full rounded-md border border-gray-400/80 py-2 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                             />
                         </div>
-                        <div className="max-h-40 overflow-y-auto rounded-md border border-gray-200">
+
+                        {/* Student List */}
+                        <div className="max-h-52 overflow-y-auto rounded-md border border-gray-200">
                             {filteredStudents.length === 0 ? (
-                                <p className="px-4 py-3 text-sm text-gray-500">No students found.</p>
+                                <p className="px-4 py-3 text-sm text-gray-500">No students match the filters.</p>
                             ) : (
                                 filteredStudents.map((s) => (
                                     <label
@@ -320,10 +369,12 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                             onChange={() => toggleStudent(s.id)}
                                             className="h-4 w-4 accent-[#1a73e8]"
                                         />
-                                        <span className="text-sm text-gray-900">{s.name}</span>
-                                        <span className="ml-auto text-xs text-gray-500">
-                                            {s.studentDetails?.studentId ?? ""}
-                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <span className="block truncate text-sm text-gray-900">{s.name}</span>
+                                            <span className="block text-xs text-gray-500">
+                                                {s.studentDetails?.studentId ?? "N/A"} • {s.studentDetails?.department ?? "N/A"} • {s.studentDetails?.semesterSession ?? "N/A"}
+                                            </span>
+                                        </div>
                                     </label>
                                 ))
                             )}

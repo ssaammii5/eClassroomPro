@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Plus, Search, Pencil, Trash2, UserPlus } from "lucide-react";
 import type { AdminCourse } from "@/lib/adminData";
-import { adminCourses, adminUsers, TEACHER_DEPARTMENTS } from "@/lib/adminData";
+import { adminCourses, adminUsers } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { CourseFormModal } from "./CourseFormModal";
@@ -20,13 +20,17 @@ export function AdminCoursesView() {
     const [courses, setCourses] = useState<AdminCourse[]>(adminCourses);
     const [search, setSearch] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("all");
+    const [programFilter, setProgramFilter] = useState("all");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminCourse | null>(null);
 
     const departmentOptions = useMemo(() => {
-        const fromData = courses.map((c) => c.department).filter(Boolean);
-        return Array.from(new Set([...TEACHER_DEPARTMENTS, ...fromData])).sort();
+        return Array.from(new Set(courses.map((c) => c.department).filter(Boolean))).sort();
+    }, [courses]);
+
+    const programOptions = useMemo(() => {
+        return Array.from(new Set(courses.map((c) => c.program).filter(Boolean))).sort();
     }, [courses]);
 
     const filtered = useMemo(() => {
@@ -34,12 +38,12 @@ export function AdminCoursesView() {
             const teacherNames = resolveTeacherNames(c.teacherIds);
             const matchSearch =
                 c.name.toLowerCase().includes(search.toLowerCase()) ||
-                c.subject.toLowerCase().includes(search.toLowerCase()) ||
                 teacherNames.toLowerCase().includes(search.toLowerCase());
             const matchDept = departmentFilter === "all" || c.department === departmentFilter;
-            return matchSearch && matchDept;
+            const matchProgram = programFilter === "all" || c.program === programFilter;
+            return matchSearch && matchDept && matchProgram;
         });
-    }, [courses, search, departmentFilter]);
+    }, [courses, search, departmentFilter, programFilter]);
 
     const handleSave = (data: Omit<AdminCourse, "id">) => {
         if (editingCourse) {
@@ -85,17 +89,27 @@ export function AdminCoursesView() {
             </div>
 
             {/* Filters */}
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative max-w-sm flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                     <input
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search courses, subjects, or teachers..."
+                        placeholder="Search courses or teachers..."
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
+                <select
+                    value={programFilter}
+                    onChange={(e) => setProgramFilter(e.target.value)}
+                    className="rounded-md border border-gray-400/80 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                >
+                    <option value="all">All Programs</option>
+                    {programOptions.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                    ))}
+                </select>
                 <select
                     value={departmentFilter}
                     onChange={(e) => setDepartmentFilter(e.target.value)}
@@ -113,8 +127,8 @@ export function AdminCoursesView() {
                 <DataTable
                     columns={[
                         { key: "name", header: "Course Name" },
+                        { key: "program", header: "Program" },
                         { key: "department", header: "Department" },
-                        { key: "subject", header: "Subject" },
                         {
                             key: "teachers",
                             header: "Teachers",
@@ -149,7 +163,7 @@ export function AdminCoursesView() {
                                 <div className="flex items-center justify-end gap-1">
                                     <button
                                         type="button"
-                                        title="Assign Teacher / Students"
+                                        title="Assign Teachers / Students"
                                         onClick={() => { setEditingCourse(c); setModalOpen(true); }}
                                         className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
                                     >

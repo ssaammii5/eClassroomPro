@@ -67,15 +67,45 @@ export interface AdminUser {
     teacherDetails?: TeacherDetails;
 }
 
+/* ─── Preassigned Course Name Catalog ─── */
+export const COURSE_CATALOG: string[] = [
+    "CIT-6102: Advanced Algorithms",
+    "CIT-5103: Symbolic Machines",
+    "CIT-5109: Natural Language Processing",
+    "CIT-6105: Information Security",
+    "CIT-5101: Computer Networks",
+    "CCE 423: Cryptography and Network Security",
+    "CSE 415: Operating Systems",
+    "CSE 416: Computer Architecture",
+    "CSE 417: Database Systems",
+    "CSE 418: Software Engineering",
+    "EEE 301: Circuit Analysis",
+    "EEE 302: Digital Electronics",
+    "BBA 201: Principles of Management",
+    "ENG 101: English Composition",
+];
+
+/* ─── Preassigned Sessions (from database) ─── */
+export const AVAILABLE_SESSIONS: string[] = [
+    "January-June/2023",
+    "July-December/2023",
+    "January-June/2024",
+    "July-December/2024",
+    "January-June/2025",
+    "July-December/2025",
+    "January-June/2026",
+    "July-December/2026",
+];
+
 /* ─── Updated AdminCourse ─── */
 export interface AdminCourse {
     id: number;
     name: string;
+    program: string;
     department: string;
-    subject: string;
     teacherIds: number[];
     studentIds: number[];
-    session: string;          // format: "January-June/2025"
+    session: string;
     isActive: boolean;
 }
 
@@ -193,33 +223,33 @@ export const adminUsers: AdminUser[] = [
     },
 ];
 
-/* ─── Updated mock courses with new fields ─── */
+/* ─── Updated mock courses ─── */
 export const adminCourses: AdminCourse[] = [
-    { id: 1, name: "CIT-6102: Advanced Algorithms", department: "CSE", subject: "MS in CSIT", teacherIds: [3], studentIds: [6, 7, 8], session: "January-June/2025", isActive: true },
-    { id: 2, name: "CIT-5103: Symbolic Machines", department: "CSE", subject: "MS in CSIT", teacherIds: [3], studentIds: [6, 7], session: "January-June/2025", isActive: true },
-    { id: 3, name: "CIT-5109 Natural Language Processing", department: "CSE", subject: "MS in CSIT", teacherIds: [4], studentIds: [8, 9], session: "January-June/2025", isActive: true },
-    { id: 4, name: "CIT 6105: Information Security", department: "CSE", subject: "MS in CSIT", teacherIds: [2], studentIds: [6, 7, 8], session: "January-June/2024", isActive: true },
-    { id: 5, name: "CIT 5101: Computer Networks", department: "CSE", subject: "MS in CSIT", teacherIds: [2], studentIds: [9, 10], session: "January-June/2023", isActive: false },
-    { id: 6, name: "CCE 423: Cryptography and Network Security", department: "CSE", subject: "B.Sc in CCE", teacherIds: [], studentIds: [6, 7, 8, 9, 10], session: "July-December/2020", isActive: true },
+    { id: 1, name: "CIT-6102: Advanced Algorithms", program: "Postgraduate", department: "CSE", teacherIds: [3], studentIds: [6, 7, 8], session: "January-June/2025", isActive: true },
+    { id: 2, name: "CIT-5103: Symbolic Machines", program: "Postgraduate", department: "CSE", teacherIds: [3], studentIds: [6, 7], session: "January-June/2025", isActive: true },
+    { id: 3, name: "CIT-5109: Natural Language Processing", program: "Postgraduate", department: "CSE", teacherIds: [4], studentIds: [8, 9], session: "January-June/2025", isActive: true },
+    { id: 4, name: "CIT-6105: Information Security", program: "Postgraduate", department: "CSE", teacherIds: [2], studentIds: [6, 7, 8], session: "January-June/2024", isActive: true },
+    { id: 5, name: "CIT-5101: Computer Networks", program: "Postgraduate", department: "CSE", teacherIds: [2], studentIds: [9, 10], session: "January-June/2023", isActive: false },
+    { id: 6, name: "CCE 423: Cryptography and Network Security", program: "Undergraduate", department: "CSE", teacherIds: [], studentIds: [6, 7, 8, 9, 10], session: "July-December/2023", isActive: true },
 ];
 
 export const adminAssignments: AdminAssignment[] = [
-    { id: 1, courseId: 4, courseName: "CIT 6105: Information Security", title: "CIT-6105 Research Assignment", description: "Follow IEEE Conference Paper format", deadline: "2025-09-16", maxMarks: 100, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-10-04", submissionCount: 18 },
-    { id: 2, courseId: 4, courseName: "CIT 6105: Information Security", title: "Lab 1 - Substitution Cipher", description: "Implement Caesar and Vigenère ciphers", deadline: "2025-07-30", maxMarks: 50, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-20", submissionCount: 28 },
-    { id: 3, courseId: 4, courseName: "CIT 6105: Information Security", title: "Quiz 1 - Classical Ciphers", description: "10 multiple-choice questions", deadline: "2025-07-12", maxMarks: 10, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-05", submissionCount: 30 },
+    { id: 1, courseId: 4, courseName: "CIT-6105: Information Security", title: "CIT-6105 Research Assignment", description: "Follow IEEE Conference Paper format", deadline: "2025-09-16", maxMarks: 100, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-10-04", submissionCount: 18 },
+    { id: 2, courseId: 4, courseName: "CIT-6105: Information Security", title: "Lab 1 - Substitution Cipher", description: "Implement Caesar and Vigenère ciphers", deadline: "2025-07-30", maxMarks: 50, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-20", submissionCount: 28 },
+    { id: 3, courseId: 4, courseName: "CIT-6105: Information Security", title: "Quiz 1 - Classical Ciphers", description: "10 multiple-choice questions", deadline: "2025-07-12", maxMarks: 10, status: "Published", createdById: 2, createdBy: "Md. Mahbubur Rahman", createdAt: "2025-07-05", submissionCount: 30 },
     { id: 4, courseId: 1, courseName: "CIT-6102: Advanced Algorithms", title: "Quiz 2 - Hashing", description: "Hash functions and collision resolution", deadline: "2025-08-20", maxMarks: 20, status: "Published", createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-10", submissionCount: 12 },
-    { id: 5, courseId: 3, courseName: "CIT-5109 Natural Language Processing", title: "CIT-6109 Research Work", description: "NLP research paper analysis", deadline: "2025-08-16", maxMarks: 100, status: "Published", createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-08-01", submissionCount: 8 },
+    { id: 5, courseId: 3, courseName: "CIT-5109: Natural Language Processing", title: "CIT-6109 Research Work", description: "NLP research paper analysis", deadline: "2025-08-16", maxMarks: 100, status: "Published", createdById: 4, createdBy: "Farjana Sultana Mim", createdAt: "2025-08-01", submissionCount: 8 },
     { id: 6, courseId: 1, courseName: "CIT-6102: Advanced Algorithms", title: "Assignment on Dynamic Programming", description: "Solve DP problems", deadline: "2025-09-01", maxMarks: 50, status: "Draft", createdById: 3, createdBy: "Prof. Dr. Abdul Masud", createdAt: "2025-08-15", submissionCount: 0 },
 ];
 
 export const adminSubmissions: AdminSubmission[] = [
-    { id: 1, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT 6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Graded", marks: 45, feedback: "Good implementation. Minor issues with edge cases.", submittedAt: "2025-07-28" },
-    { id: 2, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT 6105: Information Security", studentId: 7, studentName: "Habibur Rahman Khan Ratin", status: "Graded", marks: 42, feedback: "Well done. Consider adding more test cases.", submittedAt: "2025-07-29" },
-    { id: 3, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT 6105: Information Security", studentId: 8, studentName: "Iffat Ara Babli", status: "Submitted", marks: null, feedback: null, submittedAt: "2025-07-30" },
-    { id: 4, assignmentId: 3, assignmentTitle: "Quiz 1 - Classical Ciphers", courseId: 4, courseName: "CIT 6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Graded", marks: 9, feedback: "Excellent understanding.", submittedAt: "2025-07-11" },
-    { id: 5, assignmentId: 1, assignmentTitle: "CIT-6105 Research Assignment", courseId: 4, courseName: "CIT 6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Pending", marks: null, feedback: null, submittedAt: "" },
+    { id: 1, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT-6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Graded", marks: 45, feedback: "Good implementation. Minor issues with edge cases.", submittedAt: "2025-07-28" },
+    { id: 2, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT-6105: Information Security", studentId: 7, studentName: "Habibur Rahman Khan Ratin", status: "Graded", marks: 42, feedback: "Well done. Consider adding more test cases.", submittedAt: "2025-07-29" },
+    { id: 3, assignmentId: 2, assignmentTitle: "Lab 1 - Substitution Cipher", courseId: 4, courseName: "CIT-6105: Information Security", studentId: 8, studentName: "Iffat Ara Babli", status: "Submitted", marks: null, feedback: null, submittedAt: "2025-07-30" },
+    { id: 4, assignmentId: 3, assignmentTitle: "Quiz 1 - Classical Ciphers", courseId: 4, courseName: "CIT-6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Graded", marks: 9, feedback: "Excellent understanding.", submittedAt: "2025-07-11" },
+    { id: 5, assignmentId: 1, assignmentTitle: "CIT-6105 Research Assignment", courseId: 4, courseName: "CIT-6105: Information Security", studentId: 6, studentName: "Md. Samiur Rahman", status: "Pending", marks: null, feedback: null, submittedAt: "" },
     { id: 6, assignmentId: 4, assignmentTitle: "Quiz 2 - Hashing", courseId: 1, courseName: "CIT-6102: Advanced Algorithms", studentId: 6, studentName: "Md. Samiur Rahman", status: "Submitted", marks: null, feedback: null, submittedAt: "2025-08-19" },
-    { id: 7, assignmentId: 5, assignmentTitle: "CIT-6109 Research Work", courseId: 3, courseName: "CIT-5109 Natural Language Processing", studentId: 9, studentName: "Partha Bhakta", status: "Graded", marks: 88, feedback: "Thorough analysis. Good references.", submittedAt: "2025-08-14" },
+    { id: 7, assignmentId: 5, assignmentTitle: "CIT-6109 Research Work", courseId: 3, courseName: "CIT-5109: Natural Language Processing", studentId: 9, studentName: "Partha Bhakta", status: "Graded", marks: 88, feedback: "Thorough analysis. Good references.", submittedAt: "2025-08-14" },
 ];
 
 export const appSettings: AppSetting[] = [
