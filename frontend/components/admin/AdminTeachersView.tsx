@@ -41,15 +41,15 @@ function hasFullDetails(u: AdminUser): boolean {
     return !!d && !!d.designation && !!d.department?.trim();
 }
 
-interface DeptGroup {
+interface DesignationGroup {
     name: string;
     teachers: AdminUser[];
     count: number;
 }
 
-interface DesignationGroup {
+interface DeptGroup {
     name: string;
-    depts: DeptGroup[];
+    designations: DesignationGroup[];
     count: number;
 }
 
@@ -61,29 +61,41 @@ export function AdminTeachersView() {
     );
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
-    const [designationFilter, setDesignationFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
+    const [designationFilter, setDesignationFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
     const [joiningSort, setJoiningSort] = useState<JoiningSortOrder>("newest");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
+    /* Department options: all departments (top-level group) */
     const departmentOptions = useMemo(() => {
-        const base =
-            designationFilter === "all"
-                ? users
-                : users.filter((u) => u.teacherDetails?.designation === designationFilter);
         return Array.from(
-            new Set(base.map((u) => u.teacherDetails?.department?.trim() ?? "").filter(Boolean))
+            new Set(users.map((u) => u.teacherDetails?.department?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => a.localeCompare(b));
-    }, [users, designationFilter]);
+    }, [users]);
+
+    /* Designation options: scoped by the selected department */
+    const designationOptions = useMemo(() => {
+        const base =
+            departmentFilter === "all"
+                ? users
+                : users.filter((u) => u.teacherDetails?.department?.trim() === departmentFilter);
+        return Array.from(
+            new Set(base.map((u) => u.teacherDetails?.designation ?? "").filter(Boolean))
+        ).sort((a, b) => {
+            const ia = DESIGNATION_RANK[a] ?? 99;
+            const ib = DESIGNATION_RANK[b] ?? 99;
+            return ia - ib || a.localeCompare(b);
+        });
+    }, [users, departmentFilter]);
 
     useEffect(() => {
-        if (departmentFilter !== "all" && !departmentOptions.includes(departmentFilter)) {
-            setDepartmentFilter("all");
+        if (designationFilter !== "all" && !designationOptions.includes(designationFilter)) {
+            setDesignationFilter("all");
         }
-    }, [departmentOptions, departmentFilter]);
+    }, [designationOptions, designationFilter]);
 
     const filtered = useMemo(() => {
         return users.filter((u) => {
@@ -95,60 +107,61 @@ export function AdminTeachersView() {
             const matchStatus =
                 statusFilter === "all" ||
                 (statusFilter === "active" ? u.isActive : !u.isActive);
-            const matchDesignation =
-                designationFilter === "all" || d?.designation === designationFilter;
             const matchDept =
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
-            return matchSearch && matchStatus && matchDesignation && matchDept;
+            const matchDesignation =
+                designationFilter === "all" || d?.designation === designationFilter;
+            return matchSearch && matchStatus && matchDept && matchDesignation;
         });
-    }, [users, search, statusFilter, designationFilter, departmentFilter]);
+    }, [users, search, statusFilter, departmentFilter, designationFilter]);
 
-    const activeFilterCount = [designationFilter, departmentFilter, statusFilter].filter(
+    const activeFilterCount = [departmentFilter, designationFilter, statusFilter].filter(
         (f) => f !== "all"
     ).length;
 
     const clearFilters = () => {
-        setDesignationFilter("all");
         setDepartmentFilter("all");
+        setDesignationFilter("all");
         setStatusFilter("all");
     };
 
-    const designationGroups = useMemo<DesignationGroup[]>(() => {
+    /* Grouping: Department -> Designation */
+    const departmentGroups = useMemo<DeptGroup[]>(() => {
         const map = new Map<string, Map<string, AdminUser[]>>();
         for (const u of filtered) {
             if (!hasFullDetails(u)) continue;
             const d = u.teacherDetails!;
             const dept = d.department.trim();
-            if (!map.has(d.designation)) map.set(d.designation, new Map());
-            const deptMap = map.get(d.designation)!;
-            if (!deptMap.has(dept)) deptMap.set(dept, []);
-            deptMap.get(dept)!.push(u);
+            if (!map.has(dept)) map.set(dept, new Map());
+            const desgMap = map.get(dept)!;
+            if (!desgMap.has(d.designation)) desgMap.set(d.designation, []);
+            desgMap.get(d.designation)!.push(u);
         }
 
-        const designations = Array.from(map.keys()).sort((a, b) => {
-            const ia = DESIGNATION_RANK[a] ?? 99;
-            const ib = DESIGNATION_RANK[b] ?? 99;
-            return ia - ib || a.localeCompare(b);
-        });
+        const departments = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
 
-        return designations.map((designation) => {
-            const deptMap = map.get(designation)!;
-            const depts: DeptGroup[] = Array.from(deptMap.keys())
-                .sort((a, b) => a.localeCompare(b))
-                .map((deptName) => {
-                    const teachers = [...deptMap.get(deptName)!].sort((a, b) =>
+        return departments.map((deptName) => {
+            const desgMap = map.get(deptName)!;
+            const designations: DesignationGroup[] = Array.from(desgMap.keys())
+                .sort((a, b) => {
+                    const ia = DESIGNATION_RANK[a] ?? 99;
+                    const ib = DESIGNATION_RANK[b] ?? 99;
+                    return ia - ib || a.localeCompare(b);
+                })
+                .map((designation) => {
+                    const teachers = [...desgMap.get(designation)!].sort((a, b) =>
                         joiningSort === "newest"
                             ? joiningRank(b.teacherDetails?.joiningDate) -
                             joiningRank(a.teacherDetails?.joiningDate)
                             : joiningRank(a.teacherDetails?.joiningDate) -
                             joiningRank(b.teacherDetails?.joiningDate)
                     );
-                    return { name: deptName, teachers, count: teachers.length };
+                    return { name: designation, teachers, count: teachers.length };
                 });
             return {
-                name: designation,
-                depts,
-                count: depts.reduce((s, d) => s + d.count, 0),
+                name: deptName,
+                designations,
+                count: designations.reduce((s, g) => s + g.count, 0),
             };
         });
     }, [filtered, joiningSort]);
@@ -220,14 +233,14 @@ export function AdminTeachersView() {
                 ),
         },
         {
-            key: "department",
-            header: "Department",
+            key: "designation",
+            header: "Designation",
             width: "15%",
             truncate: true,
             render: (u: AdminUser) =>
-                u.teacherDetails?.department ? (
-                    <span className="text-sm text-gray-900" title={u.teacherDetails.department}>
-                        {u.teacherDetails.department}
+                u.teacherDetails?.designation ? (
+                    <span className="text-sm text-gray-900" title={u.teacherDetails.designation}>
+                        {u.teacherDetails.designation}
                     </span>
                 ) : (
                     <span className="text-gray-400">—</span>
@@ -358,19 +371,6 @@ export function AdminTeachersView() {
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Designation</span>
-                        <select
-                            value={designationFilter}
-                            onChange={(e) => setDesignationFilter(e.target.value)}
-                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                        >
-                            <option value="all">All Designations</option>
-                            {DESIGNATION_ORDER.map((d) => (
-                                <option key={d} value={d}>{d}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Department</span>
                         <select
                             value={departmentFilter}
@@ -379,6 +379,19 @@ export function AdminTeachersView() {
                         >
                             <option value="all">All Departments</option>
                             {departmentOptions.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Designation</span>
+                        <select
+                            value={designationFilter}
+                            onChange={(e) => setDesignationFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Designations</option>
+                            {designationOptions.map((d) => (
                                 <option key={d} value={d}>{d}</option>
                             ))}
                         </select>
@@ -398,7 +411,7 @@ export function AdminTeachersView() {
                 </div>
             )}
 
-            {/* Grouped listing */}
+            {/* Grouped listing: Department -> Designation */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -406,35 +419,35 @@ export function AdminTeachersView() {
                     </div>
                 )}
 
-                {/* Designation groups */}
-                {designationGroups.map((dg) => (
-                    <section key={dg.name}>
-                        {/* Designation header */}
+                {/* Department groups */}
+                {departmentGroups.map((dept) => (
+                    <section key={dept.name}>
+                        {/* Department header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fef7e0] text-[#b06000] sm:h-10 sm:w-10">
                                     <UserRound className="h-5 w-5" />
                                 </span>
-                                <h2 className="truncate text-xl text-gray-900 sm:text-2xl">{dg.name}</h2>
+                                <h2 className="truncate text-xl text-gray-900 sm:text-2xl">{dept.name}</h2>
                             </div>
                             <span className="shrink-0 text-sm font-medium text-gray-600">
-                                {dg.count} teacher{dg.count === 1 ? "" : "s"}
+                                {dept.count} teacher{dept.count === 1 ? "" : "s"}
                             </span>
                         </div>
 
-                        {/* Department sub-groups */}
-                        {dg.depts.map((dept) => (
-                            <div key={dept.name} className="mt-6">
+                        {/* Designation sub-groups */}
+                        {dept.designations.map((desg) => (
+                            <div key={desg.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-                                    <h3 className="min-w-0 truncate text-lg text-gray-800 sm:text-xl">{dept.name}</h3>
+                                    <h3 className="min-w-0 truncate text-lg text-gray-800 sm:text-xl">{desg.name}</h3>
                                     <span className="shrink-0 text-xs font-medium text-gray-500">
-                                        {dept.count} teacher{dept.count === 1 ? "" : "s"}
+                                        {desg.count} teacher{desg.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
                                 <div className="mt-4">
                                     <DataTable
                                         columns={columns}
-                                        data={dept.teachers}
+                                        data={desg.teachers}
                                         keyExtractor={(u) => u.id}
                                         emptyMessage="No teachers in this group."
                                         tableLayout="fixed"
@@ -456,7 +469,7 @@ export function AdminTeachersView() {
                             </span>
                         </div>
                         <p className="mt-2 px-1 text-xs text-gray-500">
-                            Teachers missing designation or department details.
+                            Teachers missing department or designation details.
                         </p>
                         <div className="mt-4">
                             <DataTable
