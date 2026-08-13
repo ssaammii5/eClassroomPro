@@ -73,10 +73,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
     const isTeachers = pathname === "/teachers";
     const isStudents = pathname === "/students";
     const isCourses = pathname === "/courses";
+    const isAcademics = pathname === "/academics";
     const isAssignments = pathname === "/assignments";
     const isSubmissions = pathname === "/submissions";
-
-    const isAdminPage = isTeachers || isStudents || isCourses || isAssignments || isSubmissions || isAppSettings;
+    const isAdminPage = isTeachers || isStudents || isCourses || isAcademics || isAssignments || isSubmissions || isAppSettings;
 
     const toggleAccount = () => { setNotifOpen(false); setAccountOpen((v) => !v); };
     const toggleNotif = () => { setAccountOpen(false); setNotifOpen((v) => !v); };
@@ -88,7 +88,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 <IconButton label="Open menu" onClick={onMenuClick}>
                     <Menu className="h-6 w-6" />
                 </IconButton>
-
                 <Link href="/" className="ml-1 flex shrink-0 items-center gap-3">
                     <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#188038]">
                         <GraduationCap className="h-6 w-6 text-white" />
@@ -111,7 +110,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     </Link>
                 )}
 
-                {/* To-do breadcrumb */}
+                {/* Page breadcrumbs */}
                 {isTodo && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
@@ -119,7 +118,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     </span>
                 )}
 
-                {/* Calendar breadcrumb */}
                 {isCalendar && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
@@ -127,7 +125,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     </span>
                 )}
 
-                {/* Settings breadcrumb */}
                 {isSettings && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
@@ -135,7 +132,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     </span>
                 )}
 
-                {/* Admin page breadcrumbs */}
                 {isAdminPage && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
@@ -143,6 +139,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                             {isTeachers && "Manage Teachers"}
                             {isStudents && "Manage Students"}
                             {isCourses && "Manage Courses"}
+                            {isAcademics && "Academics"}
                             {isAssignments && "All Assignments"}
                             {isSubmissions && "All Submissions"}
                             {isAppSettings && "App Settings"}
@@ -168,7 +165,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                             </span>
                         )}
                     </button>
-
                     {notifOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
@@ -231,7 +227,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     >
                         {initialOf(currentUser.name)}
                     </button>
-
                     {accountOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />

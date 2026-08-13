@@ -12,6 +12,7 @@ import {
     GraduationCap,
     House,
     ListTodo,
+    School,
     Settings,
     Users,
     UserRound,
@@ -82,7 +83,6 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                     onClick={onClose}
                 />
             )}
-
             <aside
                 className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${mobileClasses} ${open ? "w-[300px] px-2" : "w-[72px] px-1.5"}`}
             >
@@ -119,6 +119,13 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                                 href="/courses"
                                 icon={<BookOpen className="h-6 w-6" />}
                                 label="Courses"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/academics"}
+                                href="/academics"
+                                icon={<School className="h-6 w-6" />}
+                                label="Academics"
                             />
                             <NavItem
                                 open={open}
@@ -161,7 +168,6 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                                 icon={<ListTodo className="h-6 w-6" />}
                                 label="To-do"
                             />
-
                             {open && <div className="my-2 h-px bg-gray-300/70" />}
 
                             {/* Enrolled Classes */}
@@ -190,7 +196,6 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                                     <GraduationCap className="h-6 w-6" />
                                 </button>
                             )}
-
                             {open && enrolledOpen && (
                                 <>
                                     {sidebarClasses.map((c) => (
@@ -215,7 +220,7 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         </>
                     )}
 
-                    {/* Settings (for all users) */}
+                    {/* Settings */}
                     <NavItem
                         open={open}
                         active={pathname.startsWith("/settings")}
@@ -256,7 +261,6 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             </a>
         );
     }
-
     return (
         <a
             href={href}

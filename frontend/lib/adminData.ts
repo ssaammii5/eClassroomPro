@@ -56,6 +56,59 @@ export const TEACHER_DEPARTMENTS = [
     "Mechanical Engineering",
 ] as const;
 
+// ===== ACADEMICS DATA =====
+
+export interface AcademicProgram {
+    id: number;
+    name: string;
+    description: string;
+}
+
+export interface AcademicSemester {
+    id: number;
+    name: string;
+}
+
+export interface AcademicDepartment {
+    id: number;
+    name: string;
+    code: string;
+}
+
+export const academicPrograms: AcademicProgram[] = [
+    { id: 1, name: "Undergraduate", description: "Bachelor's degree programs (4 years)" },
+    { id: 2, name: "Postgraduate", description: "Master's degree programs (2 years)" },
+    { id: 3, name: "Post Graduate Diploma", description: "Postgraduate diploma programs (1 year)" },
+    { id: 4, name: "M.Phil", description: "Master of Philosophy research program" },
+    { id: 5, name: "PhD", description: "Doctoral research program" },
+];
+
+export const academicDepartments: AcademicDepartment[] = [
+    { id: 1, name: "Computer Science and Engineering", code: "CSE" },
+    { id: 2, name: "Electrical and Electronic Engineering", code: "EEE" },
+    { id: 3, name: "Business Administration", code: "BBA" },
+    { id: 4, name: "English", code: "ENG" },
+    { id: 5, name: "Economics", code: "ECO" },
+    { id: 6, name: "Law", code: "LAW" },
+    { id: 7, name: "Mathematics", code: "MTH" },
+    { id: 8, name: "Physics", code: "PHY" },
+    { id: 9, name: "Chemistry", code: "CHM" },
+    { id: 10, name: "Architecture", code: "ARCH" },
+    { id: 11, name: "Civil Engineering", code: "CE" },
+    { id: 12, name: "Mechanical Engineering", code: "ME" },
+];
+
+export const academicSemesters: AcademicSemester[] = [
+    { id: 1, name: "January-June/2023" },
+    { id: 2, name: "July-December/2023" },
+    { id: 3, name: "January-June/2024" },
+    { id: 4, name: "July-December/2024" },
+    { id: 5, name: "January-June/2025" },
+    { id: 6, name: "July-December/2025" },
+    { id: 7, name: "January-June/2026" },
+    { id: 8, name: "July-December/2026" },
+];
+
 export interface AdminUser {
     id: number;
     name: string;
