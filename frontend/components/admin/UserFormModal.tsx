@@ -1,4 +1,3 @@
-// components/admin/UserFormModal.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,14 +7,15 @@ import { X } from "lucide-react";
 interface UserFormModalProps {
     open: boolean;
     user: AdminUser | null;
+    defaultRole?: "Admin" | "Teacher" | "Student";
     onSave: (data: Omit<AdminUser, "id" | "createdAt">) => void;
     onClose: () => void;
 }
 
-export function UserFormModal({ open, user, onSave, onClose }: UserFormModalProps) {
+export function UserFormModal({ open, user, defaultRole = "Student", onSave, onClose }: UserFormModalProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState<"Admin" | "Teacher" | "Student">("Student");
+    const [role, setRole] = useState<"Admin" | "Teacher" | "Student">(defaultRole);
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -23,11 +23,11 @@ export function UserFormModal({ open, user, onSave, onClose }: UserFormModalProp
         if (open) {
             setName(user?.name ?? "");
             setEmail(user?.email ?? "");
-            setRole(user?.role ?? "Student");
+            setRole(user?.role ?? defaultRole);
             setIsActive(user?.isActive ?? true);
             setErrors({});
         }
-    }, [open, user]);
+    }, [open, user, defaultRole]);
 
     const validate = () => {
         const next: Record<string, string> = {};
@@ -51,7 +51,7 @@ export function UserFormModal({ open, user, onSave, onClose }: UserFormModalProp
             <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-gray-900">
-                        {user ? "Edit User" : "Add New User"}
+                        {user ? "Edit User" : `Add New ${defaultRole}`}
                     </h2>
                     <button type="button" onClick={onClose} className="cursor-pointer rounded-full p-2 text-gray-600 hover:bg-gray-100">
                         <X className="h-5 w-5" />
@@ -123,7 +123,7 @@ export function UserFormModal({ open, user, onSave, onClose }: UserFormModalProp
                         onClick={handleSubmit}
                         className="cursor-pointer rounded-full bg-[#1a63d8] px-7 py-2.5 text-sm font-medium text-white hover:bg-[#1554b5]"
                     >
-                        {user ? "Save Changes" : "Create User"}
+                        {user ? "Save Changes" : `Create ${defaultRole}`}
                     </button>
                 </div>
             </div>

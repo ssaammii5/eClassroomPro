@@ -1,6 +1,6 @@
 "use client";
 
-import { Users, BookOpen, ClipboardList, FileText, AlertCircle } from "lucide-react";
+import { Users, BookOpen, ClipboardList, FileText, UserRound, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getAdminStats } from "@/lib/adminData";
 
@@ -44,26 +44,32 @@ export function AdminDashboardView() {
             </p>
 
             {/* Stat Cards */}
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <StatCard
-                    icon={<Users className="h-6 w-6 text-[#174ea6]" />}
+                    icon={<UserRound className="h-6 w-6 text-[#174ea6]" />}
                     iconBg="bg-[#d7e3fd]"
-                    label="Total Users"
-                    value={stats.totalUsers}
-                    sublabel={`${stats.activeUsers} active`}
-                    onClick={() => router.push("/users")}
+                    label="Teachers"
+                    value={stats.totalTeachers}
+                    onClick={() => router.push("/teachers")}
                 />
                 <StatCard
-                    icon={<BookOpen className="h-6 w-6 text-[#137333]" />}
+                    icon={<Users className="h-6 w-6 text-[#137333]" />}
                     iconBg="bg-[#ceead6]"
-                    label="Total Courses"
+                    label="Students"
+                    value={stats.totalStudents}
+                    onClick={() => router.push("/students")}
+                />
+                <StatCard
+                    icon={<BookOpen className="h-6 w-6 text-[#b06000]" />}
+                    iconBg="bg-[#fef7e0]"
+                    label="Courses"
                     value={stats.totalCourses}
                     sublabel={`${stats.activeCourses} active`}
                     onClick={() => router.push("/courses")}
                 />
                 <StatCard
-                    icon={<ClipboardList className="h-6 w-6 text-[#b06000]" />}
-                    iconBg="bg-[#fef7e0]"
+                    icon={<ClipboardList className="h-6 w-6 text-[#174ea6]" />}
+                    iconBg="bg-[#d7e3fd]"
                     label="Assignments"
                     value={stats.totalAssignments}
                     sublabel={`${stats.publishedAssignments} published`}
@@ -74,7 +80,7 @@ export function AdminDashboardView() {
                     iconBg="bg-[#fce8e6]"
                     label="Submissions"
                     value={stats.totalSubmissions}
-                    sublabel={`${stats.pendingSubmissions} pending review`}
+                    sublabel={`${stats.pendingSubmissions} pending`}
                     onClick={() => router.push("/submissions")}
                 />
             </div>

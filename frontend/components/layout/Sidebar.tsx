@@ -14,6 +14,7 @@ import {
     ListTodo,
     Settings,
     Users,
+    UserRound,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -100,10 +101,17 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         <>
                             <NavItem
                                 open={open}
-                                active={pathname === "/users"}
-                                href="/users"
+                                active={pathname === "/teachers"}
+                                href="/teachers"
+                                icon={<UserRound className="h-6 w-6" />}
+                                label="Teachers"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/students"}
+                                href="/students"
                                 icon={<Users className="h-6 w-6" />}
-                                label="Users"
+                                label="Students"
                             />
                             <NavItem
                                 open={open}

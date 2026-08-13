@@ -1,4 +1,33 @@
-// lib/adminData.ts
+export interface StudentAddress {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+}
+
+export type StudentProgramType =
+    | "Undergraduate"
+    | "Postgraduate"
+    | "Post Graduate Diploma"
+    | "M.Phil"
+    | "PhD";
+
+export interface StudentDetails {
+    fathersName: string;
+    mothersName: string;
+    dateOfBirth: string;
+    mobile: string;
+    nationality: string;
+    studentId: string;
+    regNo: string;
+    department: string;
+    currentProgram: StudentProgramType;
+    session: string;
+    level: number;
+    semester: number;
+    address: StudentAddress;
+}
 
 export interface AdminUser {
     id: number;
@@ -7,6 +36,7 @@ export interface AdminUser {
     role: "Admin" | "Teacher" | "Student";
     isActive: boolean;
     createdAt: string;
+    studentDetails?: StudentDetails;
 }
 
 export interface AdminCourse {
@@ -62,11 +92,56 @@ export const adminUsers: AdminUser[] = [
     { id: 3, name: "Prof. Dr. Abdul Masud", email: "abdul.masud@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-05" },
     { id: 4, name: "Farjana Sultana Mim", email: "farjana@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-10" },
     { id: 5, name: "Chinmay Bepery", email: "chinmay@eclassroompro.com", role: "Teacher", isActive: false, createdAt: "2024-01-12" },
-    { id: 6, name: "Md. Samiur Rahman", email: "samiurinfo@gmail.com", role: "Student", isActive: true, createdAt: "2024-02-01" },
-    { id: 7, name: "Habibur Rahman Khan Ratin", email: "ratin@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-01" },
-    { id: 8, name: "Iffat Ara Babli", email: "iffat@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-01" },
-    { id: 9, name: "Partha Bhakta", email: "partha@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-05" },
-    { id: 10, name: "Md. Kaium Al Sifat Bhuiyan", email: "kaium@eclassroompro.com", role: "Student", isActive: false, createdAt: "2024-02-10" },
+    {
+        id: 6, name: "Md. Samiur Rahman", email: "samiurinfo@gmail.com", role: "Student", isActive: true, createdAt: "2024-02-01",
+        studentDetails: {
+            fathersName: "Father Name Here", mothersName: "Mother Name Here", dateOfBirth: "2002-05-15",
+            mobile: "+880 1712-345678", nationality: "Bangladeshi", studentId: "201-15-0000", regNo: "1234567890",
+            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            level: 1, semester: 1,
+            address: { street: "House 12, Road 5, Dhanmondi", city: "Dhaka", state: "Dhaka Division", zip: "1205", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 7, name: "Habibur Rahman Khan Ratin", email: "ratin@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-01",
+        studentDetails: {
+            fathersName: "Khan Rahman", mothersName: "Rehana Begum", dateOfBirth: "2001-11-02",
+            mobile: "+880 1813-224455", nationality: "Bangladeshi", studentId: "201-15-1101", regNo: "1234567891",
+            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            level: 2, semester: 2,
+            address: { street: "House 7, Mirpur DOHS", city: "Dhaka", state: "Dhaka Division", zip: "1216", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 8, name: "Iffat Ara Babli", email: "iffat@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-01",
+        studentDetails: {
+            fathersName: "Abdul Karim", mothersName: "Rashida Khatun", dateOfBirth: "2002-03-21",
+            mobile: "+880 1911-335566", nationality: "Bangladeshi", studentId: "201-15-1204", regNo: "1234567892",
+            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            level: 2, semester: 1,
+            address: { street: "Flat B4, Banani Road 11", city: "Dhaka", state: "Dhaka Division", zip: "1213", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 9, name: "Partha Bhakta", email: "partha@eclassroompro.com", role: "Student", isActive: true, createdAt: "2024-02-05",
+        studentDetails: {
+            fathersName: "Nirmal Bhakta", mothersName: "Shikha Bhakta", dateOfBirth: "2000-12-09",
+            mobile: "+880 1614-778899", nationality: "Bangladeshi", studentId: "202-16-0342", regNo: "1234567893",
+            department: "Computer Science and Engineering", currentProgram: "Postgraduate", session: "2023-2024",
+            level: 1, semester: 2,
+            address: { street: "House 22, GEC Circle", city: "Chattogram", state: "Chattogram Division", zip: "4000", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 10, name: "Md. Kaium Al Sifat Bhuiyan", email: "kaium@eclassroompro.com", role: "Student", isActive: false, createdAt: "2024-02-10",
+        studentDetails: {
+            fathersName: "Sifat Bhuiyan", mothersName: "Salma Bhuiyan", dateOfBirth: "2001-07-30",
+            mobile: "+880 1515-667788", nationality: "Bangladeshi", studentId: "202-16-0455", regNo: "1234567894",
+            department: "Computer Science and Engineering", currentProgram: "Postgraduate", session: "2023-2024",
+            level: 1, semester: 2,
+            address: { street: "House 3, Zindabazar", city: "Sylhet", state: "Sylhet Division", zip: "3100", country: "Bangladesh" },
+        },
+    },
 ];
 
 export const adminCourses: AdminCourse[] = [

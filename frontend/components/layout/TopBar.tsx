@@ -44,30 +44,10 @@ const NOTIFICATION_META: Record<
 };
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-    {
-        id: 1,
-        kind: "assignment",
-        title: "New assignment: CIT-6105 Research Assignment",
-        time: "2 hours ago",
-    },
-    {
-        id: 2,
-        kind: "comment",
-        title: "Md. Mahbubur Rahman commented on your submission",
-        time: "6 hours ago",
-    },
-    {
-        id: 3,
-        kind: "due",
-        title: "Lab 1 - Substitution Cipher is due tomorrow at 11:59 PM",
-        time: "1 day ago",
-    },
-    {
-        id: 4,
-        kind: "grade",
-        title: "Quiz 1 - Classical Ciphers graded: 9/10",
-        time: "2 days ago",
-    },
+    { id: 1, kind: "assignment", title: "New assignment: CIT-6105 Research Assignment", time: "2 hours ago" },
+    { id: 2, kind: "comment", title: "Md. Mahbubur Rahman commented on your submission", time: "6 hours ago" },
+    { id: 3, kind: "due", title: "Lab 1 - Substitution Cipher is due tomorrow at 11:59 PM", time: "1 day ago" },
+    { id: 4, kind: "grade", title: "Quiz 1 - Classical Ciphers graded: 9/10", time: "2 days ago" },
 ];
 
 export function TopBar({ onMenuClick }: TopBarProps) {
@@ -75,8 +55,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
     const router = useRouter();
     const [accountOpen, setAccountOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
-    const [notifications, setNotifications] =
-        useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+    const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
 
     const classMatch = pathname.match(/^\/class\/(\d+)/);
     const classCourse = classMatch
@@ -84,29 +63,23 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         sidebarClasses.find((c) => c.id === Number(classMatch[1]))
         : undefined;
     const classSub = classCourse
-        ? "subject" in classCourse
-            ? classCourse.subject
-            : classCourse.sub
+        ? "subject" in classCourse ? classCourse.subject : classCourse.sub
         : undefined;
 
     const isTodo = pathname.startsWith("/todo");
     const isCalendar = pathname.startsWith("/calendar");
     const isSettings = pathname.startsWith("/settings");
     const isAppSettings = pathname === "/app-settings";
-    const isUsers = pathname === "/users";
+    const isTeachers = pathname === "/teachers";
+    const isStudents = pathname === "/students";
     const isCourses = pathname === "/courses";
     const isAssignments = pathname === "/assignments";
     const isSubmissions = pathname === "/submissions";
 
-    const toggleAccount = () => {
-        setNotifOpen(false);
-        setAccountOpen((v) => !v);
-    };
+    const isAdminPage = isTeachers || isStudents || isCourses || isAssignments || isSubmissions || isAppSettings;
 
-    const toggleNotif = () => {
-        setAccountOpen(false);
-        setNotifOpen((v) => !v);
-    };
+    const toggleAccount = () => { setNotifOpen(false); setAccountOpen((v) => !v); };
+    const toggleNotif = () => { setAccountOpen(false); setNotifOpen((v) => !v); };
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
@@ -132,12 +105,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     >
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
                         <span className="min-w-0">
-                            <span className="block truncate text-[15px] font-medium text-gray-800">
-                                {classCourse.name}
-                            </span>
-                            {classSub && (
-                                <span className="block truncate text-xs text-gray-600">{classSub}</span>
-                            )}
+                            <span className="block truncate text-[15px] font-medium text-gray-800">{classCourse.name}</span>
+                            {classSub && <span className="block truncate text-xs text-gray-600">{classSub}</span>}
                         </span>
                     </Link>
                 )}
@@ -167,11 +136,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 )}
 
                 {/* Admin page breadcrumbs */}
-                {(isUsers || isCourses || isAssignments || isSubmissions || isAppSettings) && (
+                {isAdminPage && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
                         <span className="truncate text-[15px] font-medium text-gray-800">
-                            {isUsers && "Manage Users"}
+                            {isTeachers && "Manage Teachers"}
+                            {isStudents && "Manage Students"}
                             {isCourses && "Manage Courses"}
                             {isAssignments && "All Assignments"}
                             {isSubmissions && "All Submissions"}
@@ -232,15 +202,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                                             onClick={() => setNotifOpen(false)}
                                                             className="flex w-full cursor-pointer items-start gap-4 px-5 py-4 text-left hover:bg-gray-900/5"
                                                         >
-                                                            <span
-                                                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${meta.classes}`}
-                                                            >
+                                                            <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${meta.classes}`}>
                                                                 <Icon className="h-5 w-5" />
                                                             </span>
                                                             <span className="min-w-0">
-                                                                <span className="block text-sm leading-5 text-gray-900">
-                                                                    {n.title}
-                                                                </span>
+                                                                <span className="block text-sm leading-5 text-gray-900">{n.title}</span>
                                                                 <span className="mt-1 block text-xs text-gray-600">{n.time}</span>
                                                             </span>
                                                         </button>
@@ -281,37 +247,23 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                         <X className="h-5 w-5" />
                                     </button>
                                 </div>
-
                                 <div className="mt-5 flex justify-center">
-                                    <span
-                                        className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl text-white ${currentUser.avatarClass}`}
-                                    >
+                                    <span className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl text-white ${currentUser.avatarClass}`}>
                                         {initialOf(currentUser.name)}
                                     </span>
                                 </div>
-
-                                <p
-                                    title={currentUser.name}
-                                    className="mt-4 truncate px-2 text-center text-xl text-gray-900"
-                                >
+                                <p title={currentUser.name} className="mt-4 truncate px-2 text-center text-xl text-gray-900">
                                     {currentUser.name}
                                 </p>
-
                                 <div className="mt-2 flex justify-center">
-                                    <span
-                                        className={`rounded-full px-3.5 py-1 text-xs font-medium ${ROLE_STYLES[currentUser.role]}`}
-                                    >
+                                    <span className={`rounded-full px-3.5 py-1 text-xs font-medium ${ROLE_STYLES[currentUser.role]}`}>
                                         {currentUser.role}
                                     </span>
                                 </div>
-
                                 <div className="mt-5 grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setAccountOpen(false);
-                                            router.push("/settings");
-                                        }}
+                                        onClick={() => { setAccountOpen(false); router.push("/settings"); }}
                                         className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-gray-500/70 bg-white/70 py-2.5 text-sm font-medium text-[#1a73e8] hover:bg-white"
                                     >
                                         <Settings className="h-4 w-4" />
@@ -326,15 +278,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                         Log out
                                     </button>
                                 </div>
-
                                 <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-700">
-                                    <a href="#" className="hover:underline">
-                                        Privacy Policy
-                                    </a>
+                                    <a href="#" className="hover:underline">Privacy Policy</a>
                                     <span>•</span>
-                                    <a href="#" className="hover:underline">
-                                        Terms of Service
-                                    </a>
+                                    <a href="#" className="hover:underline">Terms of Service</a>
                                 </div>
                             </div>
                         </>
