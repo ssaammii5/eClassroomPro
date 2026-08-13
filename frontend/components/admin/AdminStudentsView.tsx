@@ -212,35 +212,39 @@ export function AdminStudentsView() {
         {
             key: "name",
             header: "Name",
-            width: "220px",
+            width: "24%",
             truncate: true,
         },
         {
             key: "email",
             header: "Email",
-            width: "240px",
+            width: "26%",
             truncate: true,
         },
         {
             key: "studentId",
             header: "Student ID",
-            width: "140px",
+            width: "14%",
             truncate: true,
             render: (u: AdminUser) =>
                 u.studentDetails?.studentId ? (
-                    <span className="text-sm text-gray-900">{u.studentDetails.studentId}</span>
+                    <span className="text-sm text-gray-900" title={u.studentDetails.studentId}>
+                        {u.studentDetails.studentId}
+                    </span>
                 ) : (
                     <span className="text-gray-400">—</span>
                 ),
         },
         {
-            key: "semesterSession",
-            header: "Semester",
-            width: "180px",
+            key: "department",
+            header: "Department",
+            width: "14%",
             truncate: true,
             render: (u: AdminUser) =>
-                u.studentDetails?.semesterSession ? (
-                    <span className="text-sm text-gray-900">{u.studentDetails.semesterSession}</span>
+                u.studentDetails?.department ? (
+                    <span className="text-sm text-gray-900" title={u.studentDetails.department}>
+                        {u.studentDetails.department}
+                    </span>
                 ) : (
                     <span className="text-gray-400">—</span>
                 ),
@@ -248,21 +252,16 @@ export function AdminStudentsView() {
         {
             key: "isActive",
             header: "Status",
-            width: "110px",
+            width: "10%",
             render: (u: AdminUser) => <StatusBadge status={u.isActive ? "Active" : "Inactive"} />,
-        },
-        {
-            key: "createdAt",
-            header: "Created",
-            width: "120px",
         },
         {
             key: "actions",
             header: "Actions",
-            width: "110px",
+            width: "12%",
             className: "text-right",
             render: (u: AdminUser) => (
-                <div className="flex items-center justify-end gap-1">
+                <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                     <button
                         type="button"
                         title="Edit"
@@ -452,7 +451,7 @@ export function AdminStudentsView() {
                                                 keyExtractor={(u) => u.id}
                                                 emptyMessage="No students in this group."
                                                 tableLayout="fixed"
-                                                minWidthClassName="min-w-[1120px]"
+                                                minWidthClassName="min-w-0"
                                             />
                                         </div>
                                     ))}
@@ -481,7 +480,7 @@ export function AdminStudentsView() {
                                 keyExtractor={(u) => u.id}
                                 emptyMessage="No students in this group."
                                 tableLayout="fixed"
-                                minWidthClassName="min-w-[1120px]"
+                                minWidthClassName="min-w-0"
                             />
                         </div>
                     </section>

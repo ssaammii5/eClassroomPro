@@ -24,7 +24,7 @@ export interface StudentDetails {
     department: string;
     currentProgram: StudentProgramType;
     session: string;
-    semesterSession: string; // Combined format: "January-June/2026"
+    semesterSession: string;
     address: StudentAddress;
 }
 
@@ -96,7 +96,7 @@ export const adminUsers: AdminUser[] = [
         studentDetails: {
             fathersName: "Father Name Here", mothersName: "Mother Name Here", dateOfBirth: "2002-05-15",
             mobile: "+880 1712-345678", nationality: "Bangladeshi", studentId: "201-15-0000", regNo: "1234567890",
-            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            department: "CSE", currentProgram: "Undergraduate", session: "2021-2022",
             semesterSession: "January-June/2022",
             address: { street: "House 12, Road 5, Dhanmondi", city: "Dhaka", state: "Dhaka Division", zip: "1205", country: "Bangladesh" },
         },
@@ -106,7 +106,7 @@ export const adminUsers: AdminUser[] = [
         studentDetails: {
             fathersName: "Khan Rahman", mothersName: "Rehana Begum", dateOfBirth: "2001-11-02",
             mobile: "+880 1813-224455", nationality: "Bangladeshi", studentId: "201-15-1101", regNo: "1234567891",
-            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            department: "CSE", currentProgram: "Undergraduate", session: "2021-2022",
             semesterSession: "July-December/2022",
             address: { street: "House 7, Mirpur DOHS", city: "Dhaka", state: "Dhaka Division", zip: "1216", country: "Bangladesh" },
         },
@@ -116,7 +116,7 @@ export const adminUsers: AdminUser[] = [
         studentDetails: {
             fathersName: "Abdul Karim", mothersName: "Rashida Khatun", dateOfBirth: "2002-03-21",
             mobile: "+880 1911-335566", nationality: "Bangladeshi", studentId: "201-15-1204", regNo: "1234567892",
-            department: "Computer Science and Engineering", currentProgram: "Undergraduate", session: "2021-2022",
+            department: "CSE", currentProgram: "Undergraduate", session: "2021-2022",
             semesterSession: "January-June/2023",
             address: { street: "Flat B4, Banani Road 11", city: "Dhaka", state: "Dhaka Division", zip: "1213", country: "Bangladesh" },
         },
@@ -126,7 +126,7 @@ export const adminUsers: AdminUser[] = [
         studentDetails: {
             fathersName: "Nirmal Bhakta", mothersName: "Shikha Bhakta", dateOfBirth: "2000-12-09",
             mobile: "+880 1614-778899", nationality: "Bangladeshi", studentId: "202-16-0342", regNo: "1234567893",
-            department: "Computer Science and Engineering", currentProgram: "Postgraduate", session: "2023-2024",
+            department: "EEE", currentProgram: "Postgraduate", session: "2023-2024",
             semesterSession: "July-December/2023",
             address: { street: "House 22, GEC Circle", city: "Chattogram", state: "Chattogram Division", zip: "4000", country: "Bangladesh" },
         },
@@ -136,7 +136,7 @@ export const adminUsers: AdminUser[] = [
         studentDetails: {
             fathersName: "Sifat Bhuiyan", mothersName: "Salma Bhuiyan", dateOfBirth: "2001-07-30",
             mobile: "+880 1515-667788", nationality: "Bangladeshi", studentId: "202-16-0455", regNo: "1234567894",
-            department: "Computer Science and Engineering", currentProgram: "Postgraduate", session: "2023-2024",
+            department: "EEE", currentProgram: "Postgraduate", session: "2023-2024",
             semesterSession: "January-June/2024",
             address: { street: "House 3, Zindabazar", city: "Sylhet", state: "Sylhet Division", zip: "3100", country: "Bangladesh" },
         },
