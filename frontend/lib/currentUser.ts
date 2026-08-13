@@ -1,3 +1,5 @@
+// lib/currentUser.ts
+
 export const ROLE_STYLES: Record<"Admin" | "Teacher" | "Student", string> = {
     Admin: "bg-[#fce8e6] text-[#c5221f]",
     Teacher: "bg-[#fef7e0] text-[#b06000]",
@@ -11,13 +13,15 @@ export interface CurrentUser {
     avatarClass: string;
 }
 
+// Change role to "Admin" to access the admin panel
 export const currentUser: CurrentUser = {
-    name: "Md. Samiur Rahman",
-    email: "samiurinfo@gmail.com",
-    role: "Student",
-    avatarClass: "bg-purple-800",
+    name: "Admin User",
+    email: "admin@eclassroompro.com",
+    role: "Admin",
+    avatarClass: "bg-[#c5221f]",
 };
 
+// ... rest of the file (Address, ProgramType, StudentProfile, currentStudentProfile) stays the same
 export interface Address {
     street: string;
     city: string;
@@ -34,15 +38,12 @@ export type ProgramType =
     | "PhD";
 
 export interface StudentProfile {
-    // Identity & Personal Info
     fullName: string;
     fathersName: string;
     mothersName: string;
     dateOfBirth: string;
     mobile: string;
     nationality: string;
-
-    // Academic Details
     studentId: string;
     regNo: string;
     department: string;
@@ -50,15 +51,9 @@ export interface StudentProfile {
     session: string;
     level: number;
     semester: number;
-
-    // Location
     permanentAddress: Address;
 }
 
-/**
- * Example Admin-managed student profile object.
- * Students can only VIEW these values — only an Admin can change them.
- */
 export const currentStudentProfile: StudentProfile = {
     fullName: "Md. Samiur Rahman",
     fathersName: "Father Name Here",
