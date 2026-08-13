@@ -92,6 +92,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
     const isTodo = pathname.startsWith("/todo");
     const isCalendar = pathname.startsWith("/calendar");
     const isSettings = pathname.startsWith("/settings");
+    const isAppSettings = pathname === "/app-settings";
+    const isUsers = pathname === "/users";
+    const isCourses = pathname === "/courses";
+    const isAssignments = pathname === "/assignments";
+    const isSubmissions = pathname === "/submissions";
 
     const toggleAccount = () => {
         setNotifOpen(false);
@@ -105,7 +110,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
-            {/* Left: menu, logo, breadcrumbs */}
+            {/* Left side */}
             <div className="flex min-w-0 items-center gap-1">
                 <IconButton label="Open menu" onClick={onMenuClick}>
                     <Menu className="h-6 w-6" />
@@ -161,33 +166,30 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                     </span>
                 )}
 
-
-                {/* Admin breadcrumb */}
-                {pathname.startsWith("/admin") && (
+                {/* Admin page breadcrumbs */}
+                {(isUsers || isCourses || isAssignments || isSubmissions || isAppSettings) && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
                         <span className="truncate text-[15px] font-medium text-gray-800">
-                            {pathname === "/admin/users" && "Manage Users"}
-                            {pathname === "/admin/courses" && "Manage Courses"}
-                            {pathname === "/admin/assignments" && "All Assignments"}
-                            {pathname === "/admin/submissions" && "All Submissions"}
-                            {pathname === "/admin/settings" && "App Settings"}
+                            {isUsers && "Manage Users"}
+                            {isCourses && "Manage Courses"}
+                            {isAssignments && "All Assignments"}
+                            {isSubmissions && "All Submissions"}
+                            {isAppSettings && "App Settings"}
                         </span>
                     </span>
                 )}
             </div>
 
-            {/* Right: actions */}
+            {/* Right side */}
             <div className="flex shrink-0 items-center gap-1">
-
                 {/* Notifications */}
                 <div className="relative">
                     <button
                         type="button"
                         aria-label="Notifications"
                         onClick={toggleNotif}
-                        className={`relative z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-900/10 ${notifOpen ? "bg-gray-900/10" : ""
-                            }`}
+                        className={`relative z-50 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-900/10 ${notifOpen ? "bg-gray-900/10" : ""}`}
                     >
                         <Bell className="h-6 w-6" />
                         {notifications.length > 0 && (
@@ -199,17 +201,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
                     {notifOpen && (
                         <>
-                            {/* Backdrop */}
                             <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-
-                            {/*
-                Panel:
-                - sm and up: 380px dropdown anchored to the bell button.
-                - below sm: full-width sheet pinned under the TopBar
-                  (fixed inset-x-2) so it never overflows the viewport.
-              */}
                             <div className="absolute right-0 top-full z-50 mt-2 w-[380px] overflow-hidden rounded-2xl bg-[#e9eef4] shadow-xl max-sm:fixed max-sm:inset-x-2 max-sm:top-[4.5rem] max-sm:mt-0 max-sm:w-auto">
-                                {/* Header */}
                                 <div className="flex items-center justify-between px-5 py-4">
                                     <span className="text-base font-medium text-gray-900">Notifications</span>
                                     <button
@@ -221,8 +214,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                         Clear all
                                     </button>
                                 </div>
-
-                                {/* List — height capped to the viewport on small/short screens */}
                                 <div className="max-h-[420px] overflow-y-auto border-t border-gray-300/60 max-sm:max-h-[min(26.25rem,calc(100dvh-9rem))]">
                                     {notifications.length === 0 ? (
                                         <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
@@ -277,11 +268,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
                     {accountOpen && (
                         <>
-                            {/* Backdrop */}
                             <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
-
                             <div className="absolute right-0 top-full z-50 mt-3 w-[340px] rounded-2xl bg-[#e9eef4] p-5 shadow-xl">
-                                {/* Email + close */}
                                 <div className="relative text-center">
                                     <p className="truncate text-sm text-gray-800">{currentUser.email}</p>
                                     <button
@@ -294,7 +282,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </button>
                                 </div>
 
-                                {/* Avatar */}
                                 <div className="mt-5 flex justify-center">
                                     <span
                                         className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl text-white ${currentUser.avatarClass}`}
@@ -303,7 +290,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </span>
                                 </div>
 
-                                {/* Name */}
                                 <p
                                     title={currentUser.name}
                                     className="mt-4 truncate px-2 text-center text-xl text-gray-900"
@@ -311,7 +297,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     {currentUser.name}
                                 </p>
 
-                                {/* Role badge */}
                                 <div className="mt-2 flex justify-center">
                                     <span
                                         className={`rounded-full px-3.5 py-1 text-xs font-medium ${ROLE_STYLES[currentUser.role]}`}
@@ -320,7 +305,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </span>
                                 </div>
 
-                                {/* Actions */}
                                 <div className="mt-5 grid grid-cols-2 gap-3">
                                     <button
                                         type="button"
@@ -343,7 +327,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </button>
                                 </div>
 
-                                {/* Legal */}
                                 <div className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-700">
                                     <a href="#" className="hover:underline">
                                         Privacy Policy

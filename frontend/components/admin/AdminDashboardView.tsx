@@ -1,7 +1,6 @@
-// components/admin/AdminDashboardView.tsx
 "use client";
 
-import { Users, BookOpen, ClipboardList, FileText, TrendingUp, AlertCircle } from "lucide-react";
+import { Users, BookOpen, ClipboardList, FileText, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getAdminStats } from "@/lib/adminData";
 
@@ -44,7 +43,7 @@ export function AdminDashboardView() {
                 Overview of your classroom management system
             </p>
 
-            {/* Stats Grid */}
+            {/* Stat Cards */}
             <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard
                     icon={<Users className="h-6 w-6 text-[#174ea6]" />}
@@ -52,7 +51,7 @@ export function AdminDashboardView() {
                     label="Total Users"
                     value={stats.totalUsers}
                     sublabel={`${stats.activeUsers} active`}
-                    onClick={() => router.push("/admin/users")}
+                    onClick={() => router.push("/users")}
                 />
                 <StatCard
                     icon={<BookOpen className="h-6 w-6 text-[#137333]" />}
@@ -60,7 +59,7 @@ export function AdminDashboardView() {
                     label="Total Courses"
                     value={stats.totalCourses}
                     sublabel={`${stats.activeCourses} active`}
-                    onClick={() => router.push("/admin/courses")}
+                    onClick={() => router.push("/courses")}
                 />
                 <StatCard
                     icon={<ClipboardList className="h-6 w-6 text-[#b06000]" />}
@@ -68,7 +67,7 @@ export function AdminDashboardView() {
                     label="Assignments"
                     value={stats.totalAssignments}
                     sublabel={`${stats.publishedAssignments} published`}
-                    onClick={() => router.push("/admin/assignments")}
+                    onClick={() => router.push("/assignments")}
                 />
                 <StatCard
                     icon={<FileText className="h-6 w-6 text-[#c5221f]" />}
@@ -76,13 +75,13 @@ export function AdminDashboardView() {
                     label="Submissions"
                     value={stats.totalSubmissions}
                     sublabel={`${stats.pendingSubmissions} pending review`}
-                    onClick={() => router.push("/admin/submissions")}
+                    onClick={() => router.push("/submissions")}
                 />
             </div>
 
-            {/* Breakdown Section */}
+            {/* Distribution Sections */}
             <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {/* User Breakdown */}
+                {/* User Distribution */}
                 <section className="rounded-xl border border-gray-200 bg-white p-6">
                     <h2 className="text-lg font-medium text-gray-900">User Distribution</h2>
                     <div className="mt-4 space-y-4">
@@ -131,6 +130,7 @@ export function AdminDashboardView() {
                             </span>
                         </div>
                     </div>
+
                     {stats.pendingSubmissions > 0 && (
                         <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#fef7e0] px-4 py-3">
                             <AlertCircle className="h-4 w-4 text-[#b06000]" />

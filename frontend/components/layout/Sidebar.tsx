@@ -1,4 +1,3 @@
-// components/layout/Sidebar.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -82,6 +81,7 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                     onClick={onClose}
                 />
             )}
+
             <aside
                 className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${mobileClasses} ${open ? "w-[300px] px-2" : "w-[72px] px-1.5"}`}
             >
@@ -95,48 +95,48 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         label="Home"
                     />
 
-                    {/* ═══ ADMIN NAV — flat items, same style as Settings ═══ */}
+                    {/* Admin Navigation */}
                     {isAdmin && (
                         <>
                             <NavItem
                                 open={open}
-                                active={pathname === "/admin/users"}
-                                href="/admin/users"
+                                active={pathname === "/users"}
+                                href="/users"
                                 icon={<Users className="h-6 w-6" />}
                                 label="Users"
                             />
                             <NavItem
                                 open={open}
-                                active={pathname === "/admin/courses"}
-                                href="/admin/courses"
+                                active={pathname === "/courses"}
+                                href="/courses"
                                 icon={<BookOpen className="h-6 w-6" />}
                                 label="Courses"
                             />
                             <NavItem
                                 open={open}
-                                active={pathname === "/admin/assignments"}
-                                href="/admin/assignments"
+                                active={pathname === "/assignments"}
+                                href="/assignments"
                                 icon={<ClipboardList className="h-6 w-6" />}
                                 label="Assignments"
                             />
                             <NavItem
                                 open={open}
-                                active={pathname === "/admin/submissions"}
-                                href="/admin/submissions"
+                                active={pathname === "/submissions"}
+                                href="/submissions"
                                 icon={<FileText className="h-6 w-6" />}
                                 label="Submissions"
                             />
                             <NavItem
                                 open={open}
-                                active={pathname === "/admin/settings"}
-                                href="/admin/settings"
+                                active={pathname === "/app-settings"}
+                                href="/app-settings"
                                 icon={<Cog className="h-6 w-6" />}
                                 label="App Settings"
                             />
                         </>
                     )}
 
-                    {/* ═══ STUDENT/TEACHER NAV ═══ */}
+                    {/* Non-Admin Navigation */}
                     {!isAdmin && (
                         <>
                             <NavItem
@@ -207,7 +207,7 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         </>
                     )}
 
-                    {/* Settings — shown for all roles */}
+                    {/* Settings (for all users) */}
                     <NavItem
                         open={open}
                         active={pathname.startsWith("/settings")}
@@ -248,6 +248,7 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             </a>
         );
     }
+
     return (
         <a
             href={href}
