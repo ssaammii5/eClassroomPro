@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+    BookOpen,
     Pencil,
     Plus,
     Search,
@@ -9,7 +10,6 @@ import {
     ShieldX,
     SlidersHorizontal,
     Trash2,
-    UserRound,
 } from "lucide-react";
 import type { AdminUser, TeacherDesignation } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
@@ -77,13 +77,17 @@ export function AdminTeachersView() {
     }, [users]);
 
     /* Designation options: scoped by the selected department */
-    const designationOptions = useMemo(() => {
+    const designationOptions = useMemo<TeacherDesignation[]>(() => {
         const base =
             departmentFilter === "all"
                 ? users
                 : users.filter((u) => u.teacherDetails?.department?.trim() === departmentFilter);
         return Array.from(
-            new Set(base.map((u) => u.teacherDetails?.designation ?? "").filter(Boolean))
+            new Set(
+                base
+                    .map((u) => u.teacherDetails?.designation)
+                    .filter((d): d is TeacherDesignation => Boolean(d))
+            )
         ).sort((a, b) => {
             const ia = DESIGNATION_RANK[a] ?? 99;
             const ib = DESIGNATION_RANK[b] ?? 99;
@@ -92,7 +96,7 @@ export function AdminTeachersView() {
     }, [users, departmentFilter]);
 
     useEffect(() => {
-        if (designationFilter !== "all" && !designationOptions.includes(designationFilter)) {
+        if (designationFilter !== "all" && !designationOptions.includes(designationFilter as TeacherDesignation)) {
             setDesignationFilter("all");
         }
     }, [designationOptions, designationFilter]);
@@ -343,8 +347,8 @@ export function AdminTeachersView() {
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
                         className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                                ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
                             }`}
                     >
                         <SlidersHorizontal className="h-4 w-4" />
@@ -426,7 +430,7 @@ export function AdminTeachersView() {
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fef7e0] text-[#b06000] sm:h-10 sm:w-10">
-                                    <UserRound className="h-5 w-5" />
+                                    <BookOpen className="h-5 w-5" />
                                 </span>
                                 <h2 className="truncate text-xl text-gray-900 sm:text-2xl">{dept.name}</h2>
                             </div>
