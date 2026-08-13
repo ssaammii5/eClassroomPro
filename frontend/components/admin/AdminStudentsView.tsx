@@ -15,6 +15,19 @@ const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
     PROGRAM_TYPES.map((p, i) => [p, i])
 );
 
+/**
+ * Converts a semester/session key like "July-December/2026" into a numeric rank
+ * so sessions can be sorted chronologically:
+ * July-December/2026 > January-June/2026 > July-December/2025 > ...
+ */
+function sessionRank(key: string): number {
+    const [period, yearStr] = key.split("/");
+    const year = Number(yearStr);
+    if (!Number.isFinite(year)) return 0;
+    const periodIndex = period === "July-December" ? 1 : 0;
+    return year * 2 + periodIndex;
+}
+
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.studentDetails;
     return (
@@ -42,6 +55,8 @@ interface ProgramGroup {
     count: number;
 }
 
+type SessionSortOrder = "newest" | "oldest";
+
 export function AdminStudentsView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Student")
@@ -52,6 +67,7 @@ export function AdminStudentsView() {
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [semesterSessionFilter, setSemesterSessionFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
+    const [sessionSort, setSessionSort] = useState<SessionSortOrder>("newest");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -73,7 +89,7 @@ export function AdminStudentsView() {
                 : users.filter((u) => u.studentDetails?.currentProgram === programFilter);
         return Array.from(
             new Set(base.map((u) => u.studentDetails?.semesterSession?.trim() ?? "").filter(Boolean))
-        ).sort((a, b) => a.localeCompare(b));
+        ).sort((a, b) => sessionRank(b) - sessionRank(a));
     }, [users, programFilter]);
 
     useEffect(() => {
@@ -103,7 +119,6 @@ export function AdminStudentsView() {
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
             const matchSemesterSession =
                 semesterSessionFilter === "all" || (d?.semesterSession?.trim() ?? "") === semesterSessionFilter;
-
             return (
                 matchSearch && matchStatus && matchProgram && matchDept && matchSemesterSession
             );
@@ -158,8 +173,11 @@ export function AdminStudentsView() {
                             key,
                             students: [...students].sort((a, b) => a.name.localeCompare(b.name)),
                         }))
-                        .sort((a, b) => a.key.localeCompare(b.key));
-
+                        .sort((a, b) =>
+                            sessionSort === "newest"
+                                ? sessionRank(b.key) - sessionRank(a.key)
+                                : sessionRank(a.key) - sessionRank(b.key)
+                        );
                     return {
                         name: deptName,
                         groups,
@@ -173,7 +191,7 @@ export function AdminStudentsView() {
                 count: depts.reduce((s, d) => s + d.count, 0),
             };
         });
-    }, [filtered]);
+    }, [filtered, sessionSort]);
 
     const uncategorized = useMemo(
         () =>
@@ -212,19 +230,19 @@ export function AdminStudentsView() {
         {
             key: "name",
             header: "Name",
-            width: "24%",
+            width: "22%",
             truncate: true,
         },
         {
             key: "email",
             header: "Email",
-            width: "26%",
+            width: "24%",
             truncate: true,
         },
         {
             key: "studentId",
             header: "Student ID",
-            width: "14%",
+            width: "13%",
             truncate: true,
             render: (u: AdminUser) =>
                 u.studentDetails?.studentId ? (
@@ -238,7 +256,7 @@ export function AdminStudentsView() {
         {
             key: "department",
             header: "Department",
-            width: "14%",
+            width: "15%",
             truncate: true,
             render: (u: AdminUser) =>
                 u.studentDetails?.department ? (
@@ -252,13 +270,13 @@ export function AdminStudentsView() {
         {
             key: "isActive",
             header: "Status",
-            width: "10%",
+            width: "11%",
             render: (u: AdminUser) => <StatusBadge status={u.isActive ? "Active" : "Inactive"} />,
         },
         {
             key: "actions",
             header: "Actions",
-            width: "12%",
+            width: "15%",
             className: "text-right",
             render: (u: AdminUser) => (
                 <div className="flex items-center justify-end gap-1 whitespace-nowrap">
@@ -288,7 +306,7 @@ export function AdminStudentsView() {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-semibold text-gray-900">Manage Students</h1>
+                    <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">Manage Students</h1>
                     <p className="mt-1 text-sm text-gray-600">
                         {users.length} students total • {filtered.length} shown
                     </p>
@@ -296,16 +314,16 @@ export function AdminStudentsView() {
                 <button
                     type="button"
                     onClick={() => { setEditingUser(null); setModalOpen(true); }}
-                    className="flex cursor-pointer items-center gap-2 rounded-full bg-[#1a63d8] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1554b5]"
+                    className="flex cursor-pointer items-center gap-2 self-start rounded-full bg-[#1a63d8] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1554b5] sm:self-auto"
                 >
                     <Plus className="h-4 w-4" />
                     Add Student
                 </button>
             </div>
 
-            {/* Search + Filter Toggle */}
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="relative flex-1 max-w-sm">
+            {/* Search + filter toggle + session sort */}
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                     <input
                         type="text"
@@ -315,34 +333,52 @@ export function AdminStudentsView() {
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
-                <button
-                    type="button"
-                    onClick={() => setFiltersOpen((v) => !v)}
-                    className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                        ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                        : "border-gray-400 text-gray-700 hover:bg-gray-50"
-                        }`}
-                >
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Advanced filters
-                    {activeFilterCount > 0 && (
-                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1a63d8] px-1.5 text-xs font-semibold text-white">
-                            {activeFilterCount}
+
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Semester/session sort control */}
+                    <label className="flex items-center gap-2">
+                        <span className="whitespace-nowrap text-sm font-medium text-gray-700">
+                            Semester order
                         </span>
-                    )}
-                </button>
-                {activeFilterCount > 0 && (
+                        <select
+                            value={sessionSort}
+                            onChange={(e) => setSessionSort(e.target.value as SessionSortOrder)}
+                            className="cursor-pointer rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="newest">Newest first</option>
+                            <option value="oldest">Oldest first</option>
+                        </select>
+                    </label>
+
                     <button
                         type="button"
-                        onClick={clearFilters}
-                        className="cursor-pointer text-sm font-medium text-[#1a73e8] hover:underline"
+                        onClick={() => setFiltersOpen((v) => !v)}
+                        className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
+                                ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                            }`}
                     >
-                        Clear all
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Advanced filters
+                        {activeFilterCount > 0 && (
+                            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1a63d8] px-1.5 text-xs font-semibold text-white">
+                                {activeFilterCount}
+                            </span>
+                        )}
                     </button>
-                )}
+                    {activeFilterCount > 0 && (
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="cursor-pointer text-sm font-medium text-[#1a73e8] hover:underline"
+                        >
+                            Clear all
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {/* Filter Panel */}
+            {/* Advanced filters panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
@@ -399,7 +435,7 @@ export function AdminStudentsView() {
                 </div>
             )}
 
-            {/* Grouped Student Lists */}
+            {/* Content */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -407,37 +443,37 @@ export function AdminStudentsView() {
                     </div>
                 )}
 
-                {/* Program Groups */}
+                {/* Categorized groups */}
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
-                        {/* Program Header */}
-                        <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
-                            <div className="flex items-center gap-3">
-                                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6]">
+                        {/* Program header */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6] sm:h-10 sm:w-10">
                                     <GraduationCap className="h-5 w-5" />
                                 </span>
-                                <h2 className="text-2xl text-gray-900">{pg.name}</h2>
+                                <h2 className="truncate text-xl text-gray-900 sm:text-2xl">{pg.name}</h2>
                             </div>
-                            <span className="text-sm font-medium text-gray-600">
+                            <span className="shrink-0 text-sm font-medium text-gray-600">
                                 {pg.count} student{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
 
-                        {/* Department Groups */}
+                        {/* Departments */}
                         {pg.depts.map((dept) => (
                             <div key={dept.name} className="mt-6">
-                                <div className="flex items-center justify-between px-1">
-                                    <h3 className="text-xl text-gray-800">{dept.name}</h3>
-                                    <span className="text-xs font-medium text-gray-500">
+                                <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+                                    <h3 className="min-w-0 truncate text-lg text-gray-800 sm:text-xl">{dept.name}</h3>
+                                    <span className="shrink-0 text-xs font-medium text-gray-500">
                                         {dept.count} student{dept.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
 
-                                {/* Semester Session Groups */}
+                                {/* Semester/session groups */}
                                 <div className="mt-4 space-y-6">
                                     {dept.groups.map((g) => (
                                         <div key={g.key}>
-                                            <div className="mb-2 flex items-center gap-2 px-1">
+                                            <div className="mb-2 flex flex-wrap items-center gap-2 px-1">
                                                 <span className="rounded-full bg-[#e8f0fe] px-3 py-1 text-xs font-medium text-[#174ea6]">
                                                     {g.key}
                                                 </span>
@@ -451,7 +487,7 @@ export function AdminStudentsView() {
                                                 keyExtractor={(u) => u.id}
                                                 emptyMessage="No students in this group."
                                                 tableLayout="fixed"
-                                                minWidthClassName="min-w-0"
+                                                minWidthClassName="min-w-[760px]"
                                             />
                                         </div>
                                     ))}
@@ -464,9 +500,9 @@ export function AdminStudentsView() {
                 {/* Uncategorized */}
                 {uncategorized.length > 0 && (
                     <section>
-                        <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
-                            <h2 className="text-2xl text-gray-900">Uncategorized</h2>
-                            <span className="text-sm font-medium text-gray-600">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
+                            <h2 className="text-xl text-gray-900 sm:text-2xl">Uncategorized</h2>
+                            <span className="shrink-0 text-sm font-medium text-gray-600">
                                 {uncategorized.length} student{uncategorized.length === 1 ? "" : "s"}
                             </span>
                         </div>
@@ -480,7 +516,7 @@ export function AdminStudentsView() {
                                 keyExtractor={(u) => u.id}
                                 emptyMessage="No students in this group."
                                 tableLayout="fixed"
-                                minWidthClassName="min-w-0"
+                                minWidthClassName="min-w-[760px]"
                             />
                         </div>
                     </section>
