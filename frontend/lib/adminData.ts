@@ -67,25 +67,40 @@ export interface AdminUser {
     teacherDetails?: TeacherDetails;
 }
 
-/* ─── Preassigned Course Name Catalog ─── */
-export const COURSE_CATALOG: string[] = [
-    "CIT-6102: Advanced Algorithms",
-    "CIT-5103: Symbolic Machines",
-    "CIT-5109: Natural Language Processing",
-    "CIT-6105: Information Security",
-    "CIT-5101: Computer Networks",
-    "CCE 423: Cryptography and Network Security",
-    "CSE 415: Operating Systems",
-    "CSE 416: Computer Architecture",
-    "CSE 417: Database Systems",
-    "CSE 418: Software Engineering",
-    "EEE 301: Circuit Analysis",
-    "EEE 302: Digital Electronics",
-    "BBA 201: Principles of Management",
-    "ENG 101: English Composition",
+/* ─── Course Catalog: structured by program + department ─── */
+export interface CourseCatalogItem {
+    name: string;
+    program: string;
+    department: string;
+}
+
+export const COURSE_CATALOG: CourseCatalogItem[] = [
+    { name: "CIT-6102: Advanced Algorithms", program: "Postgraduate", department: "CSE" },
+    { name: "CIT-5103: Symbolic Machines", program: "Postgraduate", department: "CSE" },
+    { name: "CIT-5109: Natural Language Processing", program: "Postgraduate", department: "CSE" },
+    { name: "CIT-6105: Information Security", program: "Postgraduate", department: "CSE" },
+    { name: "CIT-5101: Computer Networks", program: "Postgraduate", department: "CSE" },
+    { name: "CSE 415: Operating Systems", program: "Undergraduate", department: "CSE" },
+    { name: "CSE 416: Computer Architecture", program: "Undergraduate", department: "CSE" },
+    { name: "CSE 417: Database Systems", program: "Undergraduate", department: "CSE" },
+    { name: "CSE 418: Software Engineering", program: "Undergraduate", department: "CSE" },
+    { name: "CCE 423: Cryptography and Network Security", program: "Undergraduate", department: "CSE" },
+    { name: "EEE 301: Circuit Analysis", program: "Undergraduate", department: "EEE" },
+    { name: "EEE 302: Digital Electronics", program: "Undergraduate", department: "EEE" },
+    { name: "EEE 401: Control Systems", program: "Undergraduate", department: "EEE" },
+    { name: "EEE 501: Power Electronics", program: "Postgraduate", department: "EEE" },
+    { name: "BBA 201: Principles of Management", program: "Undergraduate", department: "BBA" },
+    { name: "BBA 301: Marketing Management", program: "Undergraduate", department: "BBA" },
+    { name: "ENG 101: English Composition", program: "Undergraduate", department: "English" },
+    { name: "ENG 201: Advanced English", program: "Undergraduate", department: "English" },
+    { name: "ECO 101: Microeconomics", program: "Undergraduate", department: "Economics" },
+    { name: "LAW 101: Introduction to Law", program: "Undergraduate", department: "Law" },
+    { name: "MTH 101: Calculus I", program: "Undergraduate", department: "Mathematics" },
+    { name: "PHY 101: Physics I", program: "Undergraduate", department: "Physics" },
+    { name: "CHM 101: Chemistry I", program: "Undergraduate", department: "Chemistry" },
 ];
 
-/* ─── Preassigned Sessions (from database) ─── */
+/* ─── Preassigned Sessions ─── */
 export const AVAILABLE_SESSIONS: string[] = [
     "January-June/2023",
     "July-December/2023",
@@ -97,7 +112,7 @@ export const AVAILABLE_SESSIONS: string[] = [
     "July-December/2026",
 ];
 
-/* ─── Updated AdminCourse ─── */
+/* ─── AdminCourse Interface ─── */
 export interface AdminCourse {
     id: number;
     name: string;
@@ -223,7 +238,6 @@ export const adminUsers: AdminUser[] = [
     },
 ];
 
-/* ─── Updated mock courses ─── */
 export const adminCourses: AdminCourse[] = [
     { id: 1, name: "CIT-6102: Advanced Algorithms", program: "Postgraduate", department: "CSE", teacherIds: [3], studentIds: [6, 7, 8], session: "January-June/2025", isActive: true },
     { id: 2, name: "CIT-5103: Symbolic Machines", program: "Postgraduate", department: "CSE", teacherIds: [3], studentIds: [6, 7], session: "January-June/2025", isActive: true },

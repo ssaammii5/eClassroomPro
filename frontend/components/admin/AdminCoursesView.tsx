@@ -21,6 +21,7 @@ export function AdminCoursesView() {
     const [search, setSearch] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [programFilter, setProgramFilter] = useState("all");
+    const [sessionFilter, setSessionFilter] = useState("all");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminCourse | null>(null);
@@ -33,6 +34,10 @@ export function AdminCoursesView() {
         return Array.from(new Set(courses.map((c) => c.program).filter(Boolean))).sort();
     }, [courses]);
 
+    const sessionOptions = useMemo(() => {
+        return Array.from(new Set(courses.map((c) => c.session).filter(Boolean))).sort();
+    }, [courses]);
+
     const filtered = useMemo(() => {
         return courses.filter((c) => {
             const teacherNames = resolveTeacherNames(c.teacherIds);
@@ -41,9 +46,10 @@ export function AdminCoursesView() {
                 teacherNames.toLowerCase().includes(search.toLowerCase());
             const matchDept = departmentFilter === "all" || c.department === departmentFilter;
             const matchProgram = programFilter === "all" || c.program === programFilter;
-            return matchSearch && matchDept && matchProgram;
+            const matchSession = sessionFilter === "all" || c.session === sessionFilter;
+            return matchSearch && matchDept && matchProgram && matchSession;
         });
-    }, [courses, search, departmentFilter, programFilter]);
+    }, [courses, search, departmentFilter, programFilter, sessionFilter]);
 
     const handleSave = (data: Omit<AdminCourse, "id">) => {
         if (editingCourse) {
@@ -118,6 +124,16 @@ export function AdminCoursesView() {
                     <option value="all">All Departments</option>
                     {departmentOptions.map((d) => (
                         <option key={d} value={d}>{d}</option>
+                    ))}
+                </select>
+                <select
+                    value={sessionFilter}
+                    onChange={(e) => setSessionFilter(e.target.value)}
+                    className="rounded-md border border-gray-400/80 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                >
+                    <option value="all">All Sessions</option>
+                    {sessionOptions.map((s) => (
+                        <option key={s} value={s}>{s}</option>
                     ))}
                 </select>
             </div>
