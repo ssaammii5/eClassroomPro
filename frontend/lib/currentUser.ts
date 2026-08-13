@@ -13,7 +13,8 @@ export interface CurrentUser {
     avatarClass: string;
 }
 
-// Change role to "Admin" to access the admin panel
+// ─── CHANGE THIS ROLE TO SWITCH DEMO USER ───
+// Use "Admin" | "Teacher" | "Student"
 export const currentUser: CurrentUser = {
     name: "Admin User",
     email: "admin@eclassroompro.com",
@@ -21,7 +22,7 @@ export const currentUser: CurrentUser = {
     avatarClass: "bg-[#c5221f]",
 };
 
-// ... rest of the file (Address, ProgramType, StudentProfile, currentStudentProfile) stays the same
+// ─── Student Profile (unchanged) ───
 export interface Address {
     street: string;
     city: string;

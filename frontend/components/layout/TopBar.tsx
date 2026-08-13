@@ -160,6 +160,21 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                         <span className="truncate text-[15px] font-medium text-gray-800">Settings</span>
                     </span>
                 )}
+
+
+                {/* Admin breadcrumb */}
+                {pathname.startsWith("/admin") && (
+                    <span className="flex min-w-0 items-center">
+                        <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
+                        <span className="truncate text-[15px] font-medium text-gray-800">
+                            {pathname === "/admin/users" && "Manage Users"}
+                            {pathname === "/admin/courses" && "Manage Courses"}
+                            {pathname === "/admin/assignments" && "All Assignments"}
+                            {pathname === "/admin/submissions" && "All Submissions"}
+                            {pathname === "/admin/settings" && "App Settings"}
+                        </span>
+                    </span>
+                )}
             </div>
 
             {/* Right: actions */}

@@ -4,18 +4,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
+    BookOpen,
     CalendarDays,
     ChevronUp,
+    ClipboardList,
+    Cog,
+    FileText,
     GraduationCap,
     House,
     ListTodo,
     Settings,
-    ShieldCheck,
     Users,
-    BookOpen,
-    ClipboardList,
-    FileText,
-    Cog,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -33,7 +32,6 @@ interface SidebarProps {
 
 export function Sidebar({ open, mobileReady = true, onExpand, onClose }: SidebarProps) {
     const [enrolledOpen, setEnrolledOpen] = useState(true);
-    const [adminOpen, setAdminOpen] = useState(true);
     const pathname = usePathname();
     const prevPathname = useRef(pathname);
     const isAdmin = currentUser.role === "Admin";
@@ -88,101 +86,135 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                 className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${mobileClasses} ${open ? "w-[300px] px-2" : "w-[72px] px-1.5"}`}
             >
                 <nav className="flex flex-col gap-0.5">
-                    <NavItem open={open} active={pathname === "/"} href="/" icon={<House className="h-6 w-6" />} label="Home" />
-                    <NavItem open={open} active={pathname.startsWith("/calendar")} href="/calendar" icon={<CalendarDays className="h-6 w-6" />} label="Calendar" />
+                    {/* Home */}
+                    <NavItem
+                        open={open}
+                        active={pathname === "/"}
+                        href="/"
+                        icon={<House className="h-6 w-6" />}
+                        label="Home"
+                    />
 
-                    {open && <div className="my-2 h-px bg-gray-300/70" />}
-
-                    {/* Admin Section */}
+                    {/* ═══ ADMIN NAV — flat items, same style as Settings ═══ */}
                     {isAdmin && (
                         <>
+                            <NavItem
+                                open={open}
+                                active={pathname === "/admin/users"}
+                                href="/admin/users"
+                                icon={<Users className="h-6 w-6" />}
+                                label="Users"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/admin/courses"}
+                                href="/admin/courses"
+                                icon={<BookOpen className="h-6 w-6" />}
+                                label="Courses"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/admin/assignments"}
+                                href="/admin/assignments"
+                                icon={<ClipboardList className="h-6 w-6" />}
+                                label="Assignments"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/admin/submissions"}
+                                href="/admin/submissions"
+                                icon={<FileText className="h-6 w-6" />}
+                                label="Submissions"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname === "/admin/settings"}
+                                href="/admin/settings"
+                                icon={<Cog className="h-6 w-6" />}
+                                label="App Settings"
+                            />
+                        </>
+                    )}
+
+                    {/* ═══ STUDENT/TEACHER NAV ═══ */}
+                    {!isAdmin && (
+                        <>
+                            <NavItem
+                                open={open}
+                                active={pathname.startsWith("/calendar")}
+                                href="/calendar"
+                                icon={<CalendarDays className="h-6 w-6" />}
+                                label="Calendar"
+                            />
+                            <NavItem
+                                open={open}
+                                active={pathname.startsWith("/todo")}
+                                href="/todo"
+                                icon={<ListTodo className="h-6 w-6" />}
+                                label="To-do"
+                            />
+
+                            {open && <div className="my-2 h-px bg-gray-300/70" />}
+
+                            {/* Enrolled Classes */}
                             {open ? (
                                 <button
                                     type="button"
-                                    onClick={() => setAdminOpen((v) => !v)}
+                                    onClick={() => setEnrolledOpen((v) => !v)}
                                     className="flex items-center justify-between rounded-full px-6 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-900/5"
                                 >
                                     <span className="flex items-center gap-4">
-                                        <ShieldCheck className="h-6 w-6 text-[#c5221f]" />
-                                        Admin Panel
+                                        <GraduationCap className="h-6 w-6 text-gray-600" />
+                                        Enrolled
                                     </span>
-                                    <ChevronUp className={`h-5 w-5 text-gray-600 transition-transform ${adminOpen ? "" : "rotate-180"}`} />
+                                    <ChevronUp
+                                        className={`h-5 w-5 text-gray-600 transition-transform ${enrolledOpen ? "" : "rotate-180"}`}
+                                    />
                                 </button>
                             ) : (
                                 <button
                                     type="button"
-                                    title="Admin Panel"
-                                    aria-label="Admin Panel"
+                                    title="Enrolled"
+                                    aria-label="Enrolled"
                                     onClick={onExpand}
-                                    className="my-2 flex h-11 w-full items-center justify-center rounded-full text-[#c5221f] hover:bg-gray-900/5"
+                                    className="my-2 flex h-11 w-full items-center justify-center rounded-full text-gray-700 hover:bg-gray-900/5"
                                 >
-                                    <ShieldCheck className="h-6 w-6" />
+                                    <GraduationCap className="h-6 w-6" />
                                 </button>
                             )}
 
-                            {open && adminOpen && (
+                            {open && enrolledOpen && (
                                 <>
-                                    <NavItem open={open} active={pathname === "/admin"} href="/admin" icon={<House className="h-5 w-5" />} label="Dashboard" />
-                                    <NavItem open={open} active={pathname.startsWith("/admin/users")} href="/admin/users" icon={<Users className="h-5 w-5" />} label="Users" />
-                                    <NavItem open={open} active={pathname.startsWith("/admin/courses")} href="/admin/courses" icon={<BookOpen className="h-5 w-5" />} label="Courses" />
-                                    <NavItem open={open} active={pathname.startsWith("/admin/assignments")} href="/admin/assignments" icon={<ClipboardList className="h-5 w-5" />} label="Assignments" />
-                                    <NavItem open={open} active={pathname.startsWith("/admin/submissions")} href="/admin/submissions" icon={<FileText className="h-5 w-5" />} label="Submissions" />
-                                    <NavItem open={open} active={pathname.startsWith("/admin/settings")} href="/admin/settings" icon={<Cog className="h-5 w-5" />} label="App Settings" />
+                                    {sidebarClasses.map((c) => (
+                                        <Link
+                                            key={c.id}
+                                            href={`/class/${c.id}`}
+                                            className="flex items-center gap-3 rounded-full py-2 pl-4 pr-4 hover:bg-gray-900/5"
+                                        >
+                                            <span
+                                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium ${c.avatarClass}`}
+                                            >
+                                                {c.letter}
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block truncate text-sm text-gray-800">{c.name}</span>
+                                                {c.sub && <span className="block truncate text-xs text-gray-600">{c.sub}</span>}
+                                            </span>
+                                        </Link>
+                                    ))}
                                 </>
                             )}
-
-                            {open && <div className="my-2 h-px bg-gray-300/70" />}
                         </>
                     )}
 
-                    {/* Enrolled Classes */}
-                    {open ? (
-                        <button
-                            type="button"
-                            onClick={() => setEnrolledOpen((v) => !v)}
-                            className="flex items-center justify-between rounded-full px-6 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-900/5"
-                        >
-                            <span className="flex items-center gap-4">
-                                <GraduationCap className="h-6 w-6 text-gray-600" />
-                                Enrolled
-                            </span>
-                            <ChevronUp className={`h-5 w-5 text-gray-600 transition-transform ${enrolledOpen ? "" : "rotate-180"}`} />
-                        </button>
-                    ) : (
-                        <button
-                            type="button"
-                            title="Enrolled"
-                            aria-label="Enrolled"
-                            onClick={onExpand}
-                            className="my-2 flex h-11 w-full items-center justify-center rounded-full text-gray-700 hover:bg-gray-900/5"
-                        >
-                            <GraduationCap className="h-6 w-6" />
-                        </button>
-                    )}
-
-                    <NavItem open={open} active={pathname.startsWith("/todo")} href="/todo" icon={<ListTodo className="h-6 w-6" />} label="To-do" />
-
-                    {open && enrolledOpen && (
-                        <>
-                            {sidebarClasses.map((c) => (
-                                <Link
-                                    key={c.id}
-                                    href={`/class/${c.id}`}
-                                    className="flex items-center gap-3 rounded-full py-2 pl-4 pr-4 hover:bg-gray-900/5"
-                                >
-                                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium ${c.avatarClass}`}>
-                                        {c.letter}
-                                    </span>
-                                    <span className="min-w-0">
-                                        <span className="block truncate text-sm text-gray-800">{c.name}</span>
-                                        {c.sub && <span className="block truncate text-xs text-gray-600">{c.sub}</span>}
-                                    </span>
-                                </Link>
-                            ))}
-                        </>
-                    )}
-
-                    <NavItem open={open} active={pathname.startsWith("/settings")} href="/settings" icon={<Settings className="h-6 w-6" />} label="Settings" />
+                    {/* Settings — shown for all roles */}
+                    <NavItem
+                        open={open}
+                        active={pathname.startsWith("/settings")}
+                        href="/settings"
+                        icon={<Settings className="h-6 w-6" />}
+                        label="Settings"
+                    />
                 </nav>
             </aside>
         </>
@@ -209,7 +241,9 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             >
                 <span className="relative">
                     {icon}
-                    {badge && <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-blue-600" />}
+                    {badge && (
+                        <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-blue-600" />
+                    )}
                 </span>
             </a>
         );
