@@ -6,11 +6,10 @@ import {
     Pencil,
     Plus,
     Search,
-    ShieldCheck,
-    ShieldX,
     SlidersHorizontal,
     Trash2,
 } from "lucide-react";
+
 import type { AdminUser, TeacherDesignation } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
@@ -69,19 +68,18 @@ export function AdminTeachersView() {
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
-    /* Department options: all departments (top-level group) */
     const departmentOptions = useMemo(() => {
         return Array.from(
             new Set(users.map((u) => u.teacherDetails?.department?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => a.localeCompare(b));
     }, [users]);
 
-    /* Designation options: scoped by the selected department */
     const designationOptions = useMemo<TeacherDesignation[]>(() => {
         const base =
             departmentFilter === "all"
                 ? users
                 : users.filter((u) => u.teacherDetails?.department?.trim() === departmentFilter);
+
         return Array.from(
             new Set(
                 base
@@ -115,6 +113,7 @@ export function AdminTeachersView() {
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
             const matchDesignation =
                 designationFilter === "all" || d?.designation === designationFilter;
+
             return matchSearch && matchStatus && matchDept && matchDesignation;
         });
     }, [users, search, statusFilter, departmentFilter, designationFilter]);
@@ -129,13 +128,14 @@ export function AdminTeachersView() {
         setStatusFilter("all");
     };
 
-    /* Grouping: Department -> Designation */
     const departmentGroups = useMemo<DeptGroup[]>(() => {
         const map = new Map<string, Map<string, AdminUser[]>>();
+
         for (const u of filtered) {
             if (!hasFullDetails(u)) continue;
             const d = u.teacherDetails!;
             const dept = d.department.trim();
+
             if (!map.has(dept)) map.set(dept, new Map());
             const desgMap = map.get(dept)!;
             if (!desgMap.has(d.designation)) desgMap.set(d.designation, []);
@@ -162,6 +162,7 @@ export function AdminTeachersView() {
                     );
                     return { name: designation, teachers, count: teachers.length };
                 });
+
             return {
                 name: deptName,
                 designations,
@@ -201,12 +202,6 @@ export function AdminTeachersView() {
             setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
             setDeleteTarget(null);
         }
-    };
-
-    const toggleActive = (user: AdminUser) => {
-        setUsers((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, isActive: !u.isActive } : u))
-        );
     };
 
     const columns = [
@@ -265,18 +260,6 @@ export function AdminTeachersView() {
                 <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                     <button
                         type="button"
-                        title={u.isActive ? "Deactivate" : "Activate"}
-                        onClick={() => toggleActive(u)}
-                        className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                    >
-                        {u.isActive ? (
-                            <ShieldX className="h-4 w-4" />
-                        ) : (
-                            <ShieldCheck className="h-4 w-4 text-[#188038]" />
-                        )}
-                    </button>
-                    <button
-                        type="button"
                         title="Edit"
                         onClick={() => { setEditingUser(u); setModalOpen(true); }}
                         className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
@@ -316,7 +299,7 @@ export function AdminTeachersView() {
                 </button>
             </div>
 
-            {/* Controls */}
+            {/* Search + Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -329,7 +312,7 @@ export function AdminTeachersView() {
                     />
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Joining order */}
+                    {/* Joining sort */}
                     <label className="flex items-center gap-2">
                         <span className="whitespace-nowrap text-sm font-medium text-gray-700">
                             Joining order
@@ -343,6 +326,7 @@ export function AdminTeachersView() {
                             <option value="oldest">Oldest first</option>
                         </select>
                     </label>
+
                     <button
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
@@ -371,7 +355,7 @@ export function AdminTeachersView() {
                 </div>
             </div>
 
-            {/* Advanced filters panel */}
+            {/* Filter panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="block">
@@ -415,7 +399,7 @@ export function AdminTeachersView() {
                 </div>
             )}
 
-            {/* Grouped listing: Department -> Designation */}
+            {/* Grouped tables */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -439,7 +423,7 @@ export function AdminTeachersView() {
                             </span>
                         </div>
 
-                        {/* Designation sub-groups */}
+                        {/* Designation groups */}
                         {dept.designations.map((desg) => (
                             <div key={desg.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
