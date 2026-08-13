@@ -341,8 +341,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                         value={program}
                                         onChange={(e) => handleProgramChange(e.target.value)}
                                         className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.program
-                                                ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                                : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                                             } ${program ? "text-gray-900" : "text-gray-600"}`}
                                     >
                                         <option value="" disabled>Select program</option>
@@ -364,8 +364,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                         value={department}
                                         onChange={(e) => handleDepartmentChange(e.target.value)}
                                         className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.department
-                                                ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                                : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                                             } ${department ? "text-gray-900" : "text-gray-600"}`}
                                     >
                                         <option value="" disabled>Select department</option>
@@ -387,8 +387,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                         value={session}
                                         onChange={(e) => handleSessionChange(e.target.value)}
                                         className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.session
-                                                ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                                : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                                             } ${session ? "text-gray-900" : "text-gray-600"}`}
                                     >
                                         <option value="" disabled>Select session</option>
@@ -411,8 +411,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                         onChange={(e) => handleCourseNameChange(e.target.value)}
                                         disabled={!program || !department}
                                         className={`w-full appearance-none rounded-md border bg-white px-3.5 py-2.5 pr-10 text-[15px] focus:outline-none ${errors.courseName
-                                                ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                                : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
+                                            ? "border-[#c5221f] focus:border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
+                                            : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
                                             } ${!program || !department ? "cursor-not-allowed bg-gray-100 text-gray-500" : courseName ? "text-gray-900" : "text-gray-600"}`}
                                     >
                                         <option value="" disabled>

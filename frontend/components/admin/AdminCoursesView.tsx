@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Search, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import type { AdminCourse } from "@/lib/adminData";
 import { adminCourses, adminUsers } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
@@ -177,14 +177,6 @@ export function AdminCoursesView() {
                             className: "text-right",
                             render: (c: AdminCourse) => (
                                 <div className="flex items-center justify-end gap-1">
-                                    <button
-                                        type="button"
-                                        title="Assign Teachers / Students"
-                                        onClick={() => { setEditingCourse(c); setModalOpen(true); }}
-                                        className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                                    >
-                                        <UserPlus className="h-4 w-4" />
-                                    </button>
                                     <button
                                         type="button"
                                         title="Edit"
