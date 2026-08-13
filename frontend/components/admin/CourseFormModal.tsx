@@ -9,9 +9,17 @@ import {
     TEACHER_DEPARTMENTS,
 } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
-import { X, ChevronDown, Search, UserPlus } from "lucide-react";
+import { X, ChevronDown, Search, UserPlus, Users } from "lucide-react";
 
 const DEPARTMENT_OPTIONS: string[] = [...TEACHER_DEPARTMENTS];
+
+/* ─── Group enrollment tracking ─── */
+interface EnrolledGroup {
+    program: string;
+    department: string;
+    session: string;
+    studentIds: number[];
+}
 
 interface CourseFormModalProps {
     open: boolean;
@@ -37,12 +45,13 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     const [studentProgram, setStudentProgram] = useState("");
     const [studentDept, setStudentDept] = useState("");
     const [studentSession, setStudentSession] = useState("");
-    const [studentIds, setStudentIds] = useState<number[]>([]);
+    const [enrolledGroups, setEnrolledGroups] = useState<EnrolledGroup[]>([]);
+    const [manualStudentIds, setManualStudentIds] = useState<number[]>([]);
     const [manualStudentSearch, setManualStudentSearch] = useState("");
     const [manualStudentResults, setManualStudentResults] = useState<AdminUser[]>([]);
     const [showManualResults, setShowManualResults] = useState(false);
 
-    /* ─── Memoize static data to prevent re-creation on every render ─── */
+    /* ─── Memoize static data ─── */
     const allTeachers = useMemo(
         () => adminUsers.filter((u) => u.role === "Teacher" && u.isActive),
         []
@@ -52,7 +61,7 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         []
     );
 
-    /* ─── Ref to track last applied group filter (prevents duplicate auto-select) ─── */
+    /* ─── Ref to track last applied group filter ─── */
     const lastAppliedGroupFilter = useRef<string>("");
 
     /* ─── Filtered course names based on program + department ─── */
@@ -70,19 +79,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         );
     }, [allTeachers, teacherDeptFilter]);
 
-    /* ─── Group students matching program + dept + session (for display count) ─── */
-    const groupStudents = useMemo(() => {
-        if (!studentProgram || !studentDept || !studentSession) return [];
-        return allStudents.filter((s) => {
-            const d = s.studentDetails;
-            return (
-                d?.currentProgram === studentProgram &&
-                d?.department === studentDept &&
-                d?.semesterSession === studentSession
-            );
-        });
-    }, [allStudents, studentProgram, studentDept, studentSession]);
-
     /* ─── Get unique student sessions for dropdown ─── */
     const studentSessionOptions = useMemo(() => {
         return Array.from(
@@ -90,7 +86,14 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         ).sort();
     }, [allStudents]);
 
-    /* ─── Auto-select group students when filters change ─── */
+    /* ─── Compute total enrolled students count ─── */
+    const totalEnrolledCount = useMemo(() => {
+        const groupIds = new Set(enrolledGroups.flatMap((g) => g.studentIds));
+        const manualIds = new Set(manualStudentIds);
+        return new Set([...groupIds, ...manualIds]).size;
+    }, [enrolledGroups, manualStudentIds]);
+
+    /* ─── Auto-enroll group when filters are set ─── */
     useEffect(() => {
         if (!studentProgram || !studentDept || !studentSession) {
             lastAppliedGroupFilter.current = "";
@@ -98,8 +101,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         }
 
         const filterKey = `${studentProgram}|${studentDept}|${studentSession}`;
-
-        // Only apply once per unique filter combination
         if (filterKey === lastAppliedGroupFilter.current) return;
 
         const matched = allStudents.filter((s) => {
@@ -114,9 +115,14 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         if (matched.length > 0) {
             lastAppliedGroupFilter.current = filterKey;
             const groupIds = matched.map((s) => s.id);
-            setStudentIds((prev) => {
-                const newIds = new Set([...prev, ...groupIds]);
-                return Array.from(newIds);
+
+            setEnrolledGroups((prev) => {
+                // Check if this exact group already exists
+                const exists = prev.some(
+                    (g) => g.program === studentProgram && g.department === studentDept && g.session === studentSession
+                );
+                if (exists) return prev;
+                return [...prev, { program: studentProgram, department: studentDept, session: studentSession, studentIds: groupIds }];
             });
         }
     }, [studentProgram, studentDept, studentSession, allStudents]);
@@ -129,17 +135,24 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             setSession(course?.session ?? "");
             setCourseName(course?.name ?? "");
             setTeacherIds(course?.teacherIds ?? []);
-            setStudentIds(course?.studentIds ?? []);
             setIsActive(course?.isActive ?? true);
             setErrors({});
             setTeacherDeptFilter("");
             setStudentProgram("");
             setStudentDept("");
             setStudentSession("");
+            setEnrolledGroups([]);
             setManualStudentSearch("");
             setManualStudentResults([]);
             setShowManualResults(false);
             lastAppliedGroupFilter.current = "";
+
+            // When editing, load existing students as manual (no group info stored)
+            if (course?.studentIds && course.studentIds.length > 0) {
+                setManualStudentIds([...course.studentIds]);
+            } else {
+                setManualStudentIds([]);
+            }
         }
     }, [open, course]);
 
@@ -190,6 +203,11 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         lastAppliedGroupFilter.current = "";
     };
 
+    /* ─── Remove entire group ─── */
+    const removeGroup = (index: number) => {
+        setEnrolledGroups((prev) => prev.filter((_, i) => i !== index));
+    };
+
     /* ─── Manual student search ─── */
     const handleManualSearch = (value: string) => {
         setManualStudentSearch(value);
@@ -209,13 +227,17 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     };
 
     const addManualStudent = (student: AdminUser) => {
-        setStudentIds((prev) => {
+        setManualStudentIds((prev) => {
             if (prev.includes(student.id)) return prev;
             return [...prev, student.id];
         });
         setManualStudentSearch("");
         setManualStudentResults([]);
         setShowManualResults(false);
+    };
+
+    const removeManualStudent = (id: number) => {
+        setManualStudentIds((prev) => prev.filter((s) => s !== id));
     };
 
     /* ─── Toggle handlers ─── */
@@ -225,10 +247,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         );
     };
 
-    const removeStudent = (id: number) => {
-        setStudentIds((prev) => prev.filter((s) => s !== id));
-    };
-
     const clearError = (key: string) =>
         setErrors((prev) => {
             if (!prev[key]) return prev;
@@ -236,6 +254,13 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             delete next[key];
             return next;
         });
+
+    /* ─── Get all student IDs for saving ─── */
+    const getAllStudentIds = (): number[] => {
+        const groupIds = enrolledGroups.flatMap((g) => g.studentIds);
+        const allIds = new Set([...groupIds, ...manualStudentIds]);
+        return Array.from(allIds);
+    };
 
     /* ─── Validation ─── */
     const validate = () => {
@@ -257,7 +282,7 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             program,
             department,
             teacherIds,
-            studentIds,
+            studentIds: getAllStudentIds(),
             session,
             isActive,
         });
@@ -479,9 +504,9 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">
                             Enrolled Students
-                            {studentIds.length > 0 && (
+                            {totalEnrolledCount > 0 && (
                                 <span className="ml-2 rounded-full bg-[#e6f4ea] px-2 py-0.5 text-xs font-medium text-[#137333]">
-                                    {studentIds.length} enrolled
+                                    {totalEnrolledCount} enrolled
                                 </span>
                             )}
                         </h3>
@@ -532,11 +557,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                     <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-700" />
                                 </div>
                             </div>
-                            {studentProgram && studentDept && studentSession && (
-                                <p className="mt-2 text-xs text-gray-600">
-                                    {groupStudents.length} student{groupStudents.length === 1 ? "" : "s"} found in this group — auto-selected.
-                                </p>
-                            )}
                         </div>
 
                         {/* Manual student enrollment */}
@@ -553,38 +573,78 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 />
                                 {showManualResults && manualStudentResults.length > 0 && (
                                     <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                                        {manualStudentResults.map((s) => (
-                                            <button
-                                                key={s.id}
-                                                type="button"
-                                                onClick={() => addManualStudent(s)}
-                                                className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
-                                            >
-                                                <UserPlus className="h-4 w-4 shrink-0 text-[#1a73e8]" />
-                                                <div className="min-w-0 flex-1">
-                                                    <span className="block truncate text-sm text-gray-900">{s.name}</span>
-                                                    <span className="block text-xs text-gray-500">
-                                                        {s.studentDetails?.studentId ?? "N/A"} • {s.email}
-                                                    </span>
-                                                </div>
-                                                {studentIds.includes(s.id) && (
-                                                    <span className="shrink-0 text-xs text-[#137333]">Already enrolled</span>
-                                                )}
-                                            </button>
-                                        ))}
+                                        {manualStudentResults.map((s) => {
+                                            const isAlreadyEnrolled =
+                                                manualStudentIds.includes(s.id) ||
+                                                enrolledGroups.some((g) => g.studentIds.includes(s.id));
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => addManualStudent(s)}
+                                                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50"
+                                                >
+                                                    <UserPlus className="h-4 w-4 shrink-0 text-[#1a73e8]" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <span className="block truncate text-sm text-gray-900">{s.name}</span>
+                                                        <span className="block text-xs text-gray-500">
+                                                            {s.studentDetails?.studentId ?? "N/A"} • {s.email}
+                                                        </span>
+                                                    </div>
+                                                    {isAlreadyEnrolled && (
+                                                        <span className="shrink-0 text-xs text-[#137333]">Already enrolled</span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
                         </div>
 
-                        {/* Selected students list */}
-                        {studentIds.length > 0 && (
+                        {/* ─── Enrolled Groups Display ─── */}
+                        {enrolledGroups.length > 0 && (
+                            <div className="mb-4">
+                                <p className="mb-2 text-sm font-medium text-gray-700">
+                                    Enrolled Groups ({enrolledGroups.length})
+                                </p>
+                                <div className="space-y-2">
+                                    {enrolledGroups.map((group, index) => (
+                                        <div
+                                            key={`${group.program}-${group.department}-${group.session}`}
+                                            className="flex items-center gap-3 rounded-md border border-[#c8e6c9] bg-[#e8f5e9] px-4 py-3"
+                                        >
+                                            <Users className="h-5 w-5 shrink-0 text-[#137333]" />
+                                            <div className="min-w-0 flex-1">
+                                                <span className="block text-sm font-medium text-[#137333]">
+                                                    {group.program} • {group.department} • {group.session}
+                                                </span>
+                                                <span className="block text-xs text-[#2e7d32]">
+                                                    {group.studentIds.length} student{group.studentIds.length === 1 ? "" : "s"} enrolled
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeGroup(index)}
+                                                className="shrink-0 cursor-pointer rounded-full p-1.5 text-[#2e7d32] hover:bg-[#c8e6c9] hover:text-[#c5221f]"
+                                                title="Remove entire group"
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ─── Manually Enrolled Students Display ─── */}
+                        {manualStudentIds.length > 0 && (
                             <div>
                                 <p className="mb-2 text-sm font-medium text-gray-700">
-                                    Enrolled Students ({studentIds.length})
+                                    Manually Enrolled Students ({manualStudentIds.length})
                                 </p>
                                 <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
-                                    {studentIds.map((id) => {
+                                    {manualStudentIds.map((id) => {
                                         const student = adminUsers.find((u) => u.id === id);
                                         return student ? (
                                             <div
@@ -599,7 +659,7 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeStudent(id)}
+                                                    onClick={() => removeManualStudent(id)}
                                                     className="shrink-0 cursor-pointer rounded p-1 text-gray-500 hover:bg-red-50 hover:text-[#c5221f]"
                                                     title="Remove student"
                                                 >
