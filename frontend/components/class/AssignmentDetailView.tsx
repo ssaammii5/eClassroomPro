@@ -20,11 +20,11 @@ import type { AssignmentAttachment, AssignmentDetail } from "@/lib/assignmentDet
 
 interface AssignmentDetailViewProps {
     detail: AssignmentDetail;
+    readOnly?: boolean;
 }
 
 type WorkStatus = "Assigned" | "Turned in";
 
-/* ------------------------------ helpers ------------------------------ */
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "ico", "avif"];
 const TEXT_EXTS = ["txt", "md", "csv", "json", "log", "js", "ts", "jsx", "tsx", "html", "css", "xml", "yml", "yaml"];
 
@@ -47,9 +47,8 @@ function cardEmoji(a: AssignmentAttachment): string {
     return "📄";
 }
 
-export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
+export function AssignmentDetailView({ detail, readOnly = false }: AssignmentDetailViewProps) {
     const initiallyTurnedIn = detail.submission.status === "Turned in";
-
     const [status, setStatus] = useState<WorkStatus>(initiallyTurnedIn ? "Turned in" : "Assigned");
     const [attachments, setAttachments] = useState<AssignmentAttachment[]>(
         initiallyTurnedIn ? detail.submission.attachments : [],
@@ -57,24 +56,17 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
     const [addMenuOpen, setAddMenuOpen] = useState(false);
     const [turnInOpen, setTurnInOpen] = useState(false);
     const [unsubmitOpen, setUnsubmitOpen] = useState(false);
-
-    /* Add-link dialog state */
     const [linkDialogOpen, setLinkDialogOpen] = useState(false);
     const [linkValue, setLinkValue] = useState("");
     const [linkTouched, setLinkTouched] = useState(false);
-
-    /* File viewer state */
     const [viewerAttachment, setViewerAttachment] = useState<AssignmentAttachment | null>(null);
-
     const linkIdRef = useRef(1000);
     const fileIdRef = useRef(2000);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
     const turnedIn = status === "Turned in";
     const linkValid = isValidLink(linkValue);
     const linkError = linkTouched && !linkValid;
 
-    /* ------------------------------ work actions ------------------------------ */
     const openFilePicker = () => {
         setAddMenuOpen(false);
         fileInputRef.current?.click();
@@ -94,7 +86,7 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                 kind: "file" as const,
             })),
         ]);
-        e.target.value = ""; // allow re-selecting the same file
+        e.target.value = "";
     };
 
     const openLinkDialog = () => {
@@ -109,7 +101,7 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
     const confirmAddLink = () => {
         if (!linkValid) return;
         const typed = linkValue.trim();
-        const normalized = /^https?:\/\//i.test(typed) ? typed : `https://${typed}`;
+        const normalized = /^https?:\/\//.test(typed) ? typed : `https://${typed}`;
         setAttachments((prev) => [
             ...prev,
             {
@@ -149,77 +141,76 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-white">
-            {/* Hidden real file picker */}
-            <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.csv,.zip,image/*"
-                className="hidden"
-                onChange={handleFiles}
-            />
+            {/* Hidden file input */}
+            {!readOnly && (
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={handleFiles}
+                />
+            )}
 
-            <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-8">
-                <div className="flex flex-col gap-8 lg:flex-row">
-                    {/* ------------------------------ Main column ------------------------------ */}
-                    <div className="min-w-0 flex-1">
-                        {/* Title row */}
-                        <div className="flex items-start justify-between gap-4">
-                            <div className="flex min-w-0 items-center gap-6">
-                                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-700">
-                                    <ClipboardList className="h-6 w-6" />
-                                </span>
-                                <h1 className="min-w-0 text-3xl text-gray-900 sm:text-[32px]">{detail.title}</h1>
-                            </div>
-                            <IconButton label="More options" className="h-10 w-10 shrink-0">
-                                <EllipsisVertical className="h-5 w-5" />
-                            </IconButton>
+            <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-10 px-4 py-10 sm:px-8 lg:flex-row">
+                {/* Main content */}
+                <div className="min-w-0 flex-1">
+                    {/* Title row */}
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-6">
+                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-700">
+                                <ClipboardList className="h-6 w-6" />
+                            </span>
+                            <h1 className="min-w-0 text-3xl text-gray-900 sm:text-[32px]">{detail.title}</h1>
                         </div>
-
-                        {/* Meta */}
-                        <p className="mt-6 text-sm text-gray-800">
-                            {detail.teacherName}
-                            <span className="mx-2 text-gray-600">•</span>
-                            {detail.postedDate}
-                        </p>
-                        <p className="mt-4 text-sm font-semibold text-gray-900">
-                            {detail.points} points
-                            <span className="mx-3 font-normal text-gray-700">|</span>
-                            {detail.dueLabel}
-                        </p>
-
-                        <div className="mt-5 border-t border-gray-300" />
-
-                        {/* Description */}
-                        <p className="mt-7 whitespace-pre-line text-sm leading-6 text-gray-800">
-                            {detail.description}
-                        </p>
-
-                        {/* Attachments */}
-                        {detail.attachments.length > 0 && (
-                            <div className="mt-7 flex flex-wrap gap-4">
-                                {detail.attachments.map((att) => (
-                                    <FileTile key={att.id} attachment={att} />
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Class comments */}
-                        <div className="mt-12 flex items-center gap-4">
-                            <UsersRound className="h-6 w-6 text-gray-700" />
-                            <span className="text-sm font-medium text-gray-900">Class comments</span>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="mt-7 flex cursor-pointer items-center gap-3 text-sm font-medium text-[#1a73e8] hover:underline"
-                        >
-                            <MessageSquare className="h-5 w-5" />
-                            Add comment
-                        </button>
+                        <IconButton label="More options" className="h-10 w-10 shrink-0">
+                            <EllipsisVertical className="h-5 w-5" />
+                        </IconButton>
                     </div>
 
-                    {/* ------------------------------ Right column ------------------------------ */}
+                    {/* Meta info */}
+                    <p className="mt-6 text-sm text-gray-800">
+                        {detail.teacherName}
+                        <span className="mx-2 text-gray-600">•</span>
+                        {detail.postedDate}
+                    </p>
+                    <p className="mt-4 text-sm font-semibold text-gray-900">
+                        {detail.points} points
+                        <span className="mx-3 font-normal text-gray-700">|</span>
+                        {detail.dueLabel}
+                    </p>
+                    <div className="mt-5 border-t border-gray-300" />
+
+                    {/* Description */}
+                    <p className="mt-7 whitespace-pre-line text-sm leading-6 text-gray-800">
+                        {detail.description}
+                    </p>
+
+                    {/* Attachments */}
+                    {detail.attachments.length > 0 && (
+                        <div className="mt-7 flex flex-wrap gap-4">
+                            {detail.attachments.map((att) => (
+                                <FileTile key={att.id} attachment={att} />
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Class comments */}
+                    <div className="mt-12 flex items-center gap-4">
+                        <UsersRound className="h-6 w-6 text-gray-700" />
+                        <span className="text-sm font-medium text-gray-900">Class comments</span>
+                    </div>
+                    <button
+                        type="button"
+                        className="mt-7 flex cursor-pointer items-center gap-3 text-sm font-medium text-[#1a73e8] hover:underline"
+                    >
+                        <MessageSquare className="h-5 w-5" />
+                        Add comment
+                    </button>
+                </div>
+
+                {/* Right sidebar — hidden in readOnly mode */}
+                {!readOnly && (
                     <div className="w-full shrink-0 space-y-6 lg:w-[350px]">
                         {/* Your work */}
                         <section className="rounded-lg bg-[#e9eef4] p-4 sm:p-5">
@@ -232,7 +223,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                                 </span>
                             </div>
 
-                            {/* Current / submitted attachments */}
                             {attachments.length > 0 && (
                                 <div className="mt-4 space-y-4">
                                     {attachments.map((att) => (
@@ -253,7 +243,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                                 </div>
                             )}
 
-                            {/* Add or create */}
                             {!turnedIn && (
                                 <div className="relative mt-4">
                                     <button
@@ -264,10 +253,8 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                                         <Plus className="h-4 w-4" />
                                         Add or create
                                     </button>
-
                                     {addMenuOpen && (
                                         <>
-                                            {/* click-away backdrop */}
                                             <div className="fixed inset-0 z-10" onClick={() => setAddMenuOpen(false)} />
                                             <div className="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-lg bg-[#e9eef4] py-2 shadow-lg">
                                                 <button
@@ -292,7 +279,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                                 </div>
                             )}
 
-                            {/* Primary action */}
                             <button
                                 type="button"
                                 onClick={turnedIn ? () => setUnsubmitOpen(true) : handlePrimary}
@@ -303,7 +289,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                             >
                                 {turnedIn ? "Unsubmit" : attachments.length > 0 ? "Turn in" : "Mark as done"}
                             </button>
-
                             {!turnedIn && (
                                 <p className="mt-4 text-center text-xs italic text-gray-700">
                                     Work cannot be turned in after the due date
@@ -326,11 +311,11 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                             </button>
                         </section>
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* ------------------------------ Turn-in confirmation dialog ------------------------------ */}
-            {turnInOpen && (
+            {/* Turn in confirmation */}
+            {!readOnly && turnInOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
                     <div className="w-full max-w-xl rounded-2xl bg-[#e9eef4] p-6 shadow-xl">
                         <h2 className="text-2xl text-gray-900">Turn in your work?</h2>
@@ -369,8 +354,8 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                 </div>
             )}
 
-            {/* ------------------------------ Unsubmit confirmation dialog ------------------------------ */}
-            {unsubmitOpen && (
+            {/* Unsubmit confirmation */}
+            {!readOnly && unsubmitOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
                     <div className="w-full max-w-xl rounded-2xl bg-[#e9eef4] p-6 shadow-xl">
                         <h2 className="text-2xl text-gray-900">Unsubmit?</h2>
@@ -398,12 +383,11 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                 </div>
             )}
 
-            {/* ------------------------------ Add link dialog ------------------------------ */}
-            {linkDialogOpen && (
+            {/* Link dialog */}
+            {!readOnly && linkDialogOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
                         <h2 className="text-xl text-gray-900">Add link</h2>
-
                         <div className="mt-6">
                             <div
                                 className={`relative rounded-t border-b-2 bg-[#dfe3ea] ${linkError ? "border-[#d93025]" : "border-gray-500"
@@ -428,7 +412,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                                 <p className="mt-2 px-1 text-sm text-[#d93025]">Please enter a valid link</p>
                             )}
                         </div>
-
                         <div className="mt-8 flex justify-end gap-8">
                             <button
                                 type="button"
@@ -453,7 +436,7 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
                 </div>
             )}
 
-            {/* ------------------------------ File viewer ------------------------------ */}
+            {/* File viewer modal */}
             {viewerAttachment && (
                 <FileViewerModal attachment={viewerAttachment} onClose={() => setViewerAttachment(null)} />
             )}
@@ -461,7 +444,6 @@ export function AssignmentDetailView({ detail }: AssignmentDetailViewProps) {
     );
 }
 
-/* ------------------------------ work attachment card ------------------------------ */
 function WorkAttachmentCard({
     attachment,
     onOpen,
@@ -471,7 +453,6 @@ function WorkAttachmentCard({
 }) {
     const cardClass =
         "flex min-w-0 flex-1 overflow-hidden rounded-lg border border-gray-300 bg-white text-left transition-shadow hover:shadow-md";
-
     const inner = (
         <>
             <span className="flex min-w-0 flex-1 flex-col justify-center px-4 py-3">
@@ -488,7 +469,6 @@ function WorkAttachmentCard({
         </>
     );
 
-    /* Links open in a NEW TAB */
     if (attachment.kind === "link" && attachment.url) {
         return (
             <a href={attachment.url} target="_blank" rel="noopener noreferrer" className={cardClass}>
@@ -496,8 +476,6 @@ function WorkAttachmentCard({
             </a>
         );
     }
-
-    /* Files open the in-app viewer */
     return (
         <button type="button" onClick={() => onOpen(attachment)} className={`${cardClass} w-full cursor-pointer`}>
             {inner}
@@ -505,7 +483,6 @@ function WorkAttachmentCard({
     );
 }
 
-/* ------------------------------ teacher file tile (unchanged look) ------------------------------ */
 function FileTile({ attachment }: { attachment: AssignmentAttachment }) {
     return (
         <a
@@ -528,7 +505,6 @@ function FileTile({ attachment }: { attachment: AssignmentAttachment }) {
     );
 }
 
-/* ------------------------------ in-app file viewer modal ------------------------------ */
 function FileViewerModal({
     attachment,
     onClose,
@@ -538,13 +514,11 @@ function FileViewerModal({
 }) {
     const ext = extOf(attachment.title);
     const url = attachment.url;
-
     const isImage = IMAGE_EXTS.includes(ext);
     const isPdf = ext === "pdf";
     const isText = TEXT_EXTS.includes(ext);
     const isDocx = ext === "docx";
     const isZip = ext === "zip";
-
     const [text, setText] = useState<string | null>(null);
     const [zipEntries, setZipEntries] = useState<string[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -556,7 +530,6 @@ function FileViewerModal({
         setZipEntries(null);
         setError(null);
         if (!url) return;
-
         if (isText) {
             fetch(url)
                 .then((r) => r.text())
@@ -605,7 +578,6 @@ function FileViewerModal({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
             <div className="flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
-                {/* Viewer header */}
                 <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-3">
                     <div className="flex min-w-0 items-center gap-3 text-gray-700">
                         {headerIcon}
@@ -641,8 +613,6 @@ function FileViewerModal({
                         </button>
                     </div>
                 </div>
-
-                {/* Viewer body */}
                 <div className="min-h-0 flex-1 overflow-auto bg-gray-100">
                     {!url ? (
                         <NoPreview />
@@ -711,7 +681,7 @@ function NoPreview({ message }: { message?: string }) {
                 {message ?? "No in-browser preview available for this file type."}
             </p>
             <p className="text-xs text-gray-600">
-                Use “Download” or “Open in new tab” above to view it with an external app.
+                Use "Download" or "Open in new tab" above to view it with an external app.
             </p>
         </div>
     );

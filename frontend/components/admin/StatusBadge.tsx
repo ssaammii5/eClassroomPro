@@ -16,8 +16,9 @@ const VARIANT_CLASSES: Record<string, string> = {
 function getVariant(status: string): string {
     const lower = status.toLowerCase();
     if (["active", "published", "graded", "turned in", "done"].includes(lower)) return "success";
-    if (["draft", "pending", "submitted", "assigned"].includes(lower)) return "info";
-    if (["inactive", "archived", "missing", "overdue"].includes(lower)) return "danger";
+    if (["draft", "submitted", "assigned"].includes(lower)) return "info";
+    if (["pending"].includes(lower)) return "warning";
+    if (["inactive", "missing", "overdue"].includes(lower)) return "danger";
     return "neutral";
 }
 

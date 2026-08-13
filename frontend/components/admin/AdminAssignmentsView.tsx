@@ -10,6 +10,7 @@ import {
     Search,
     SlidersHorizontal,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { adminAssignments } from "@/lib/adminData";
 import type { AdminAssignment } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
@@ -52,6 +53,7 @@ interface ProgramGroup {
 }
 
 export function AdminAssignmentsView() {
+    const router = useRouter();
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [programFilter, setProgramFilter] = useState("all");
@@ -103,7 +105,6 @@ export function AdminAssignmentsView() {
     };
 
     const programGroups = useMemo<ProgramGroup[]>(() => {
-        // Program → Department → Session → Course → Assignments
         const map = new Map<string, Map<string, Map<string, Map<string, AdminAssignment[]>>>>();
 
         for (const a of filtered) {
@@ -161,8 +162,25 @@ export function AdminAssignmentsView() {
         });
     }, [filtered]);
 
+    const handleRowClick = (assignmentId: number) => {
+        router.push(`/assignments/${assignmentId}`);
+    };
+
     const columns = [
-        { key: "title", header: "Title", truncate: true },
+        {
+            key: "title",
+            header: "Title",
+            truncate: true,
+            render: (a: AdminAssignment) => (
+                <button
+                    type="button"
+                    onClick={() => handleRowClick(a.id)}
+                    className="cursor-pointer text-left text-sm font-medium text-[#1a73e8] hover:underline"
+                >
+                    {a.title}
+                </button>
+            ),
+        },
         { key: "createdBy", header: "Created By", truncate: true },
         { key: "deadline", header: "Deadline", width: "120px" },
         { key: "maxMarks", header: "Max Marks", className: "text-center", width: "90px" },
@@ -209,8 +227,8 @@ export function AdminAssignmentsView() {
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
                         className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                                ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
                             }`}
                     >
                         <SlidersHorizontal className="h-4 w-4" />
@@ -284,8 +302,8 @@ export function AdminAssignmentsView() {
                         >
                             <option value="all">All Status</option>
                             <option value="Draft">Draft</option>
+                            <option value="Pending">Pending</option>
                             <option value="Published">Published</option>
-                            <option value="Archived">Archived</option>
                         </select>
                     </label>
                 </div>

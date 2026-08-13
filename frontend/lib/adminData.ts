@@ -192,7 +192,7 @@ export interface AdminAssignment {
     description: string;
     deadline: string;
     maxMarks: number;
-    status: "Draft" | "Published" | "Archived";
+    status: "Draft" | "Published" | "Pending";
     createdById: number;
     createdBy: string;
     createdAt: string;
