@@ -1,87 +1,190 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Plus, Search, Pencil, Trash2, GraduationCap } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { GraduationCap, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import type { AdminUser } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
+import { PROGRAM_TYPES } from "@/components/settings/constants";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { StudentFormModal } from "./StudentFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-interface StudentGroup {
+/* ---------- constants & helpers ---------- */
+
+const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
+    PROGRAM_TYPES.map((p, i) => [p, i])
+);
+
+const LEVEL_OPTIONS = ["1", "2", "3", "4"];
+const SEMESTER_OPTIONS = ["1", "2"];
+
+function hasFullDetails(u: AdminUser): boolean {
+    const d = u.studentDetails;
+    return (
+        !!d &&
+        !!d.currentProgram &&
+        !!d.department?.trim() &&
+        d.level != null &&
+        d.semester != null
+    );
+}
+
+interface LevelSemGroup {
     key: string;
-    label: string;
-    level: number | null;
-    semester: number | null;
+    level: number;
+    semester: number;
     students: AdminUser[];
+}
+interface DeptGroup {
+    name: string;
+    groups: LevelSemGroup[];
+    count: number;
+}
+interface ProgramGroup {
+    name: string;
+    depts: DeptGroup[];
+    count: number;
 }
 
 export function AdminStudentsView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Student")
     );
+
+    /* ---------- filters ---------- */
     const [search, setSearch] = useState("");
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [programFilter, setProgramFilter] = useState("all");
+    const [departmentFilter, setDepartmentFilter] = useState("all");
+    const [levelFilter, setLevelFilter] = useState("all");
+    const [semesterFilter, setSemesterFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
+
+    /* ---------- modals ---------- */
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
+    /* Department options depend on selected program (cascading filter) */
+    const departmentOptions = useMemo(() => {
+        const base =
+            programFilter === "all"
+                ? users
+                : users.filter((u) => u.studentDetails?.currentProgram === programFilter);
+        return Array.from(
+            new Set(base.map((u) => u.studentDetails?.department?.trim() ?? "").filter(Boolean))
+        ).sort((a, b) => a.localeCompare(b));
+    }, [users, programFilter]);
+
+    /* Reset department if it no longer exists under the chosen program */
+    useEffect(() => {
+        if (departmentFilter !== "all" && !departmentOptions.includes(departmentFilter)) {
+            setDepartmentFilter("all");
+        }
+    }, [departmentOptions, departmentFilter]);
+
     /* ---------- filtering ---------- */
     const filtered = useMemo(() => {
         return users.filter((u) => {
+            const d = u.studentDetails;
             const matchSearch =
                 u.name.toLowerCase().includes(search.toLowerCase()) ||
                 u.email.toLowerCase().includes(search.toLowerCase()) ||
-                (u.studentDetails?.studentId ?? "").toLowerCase().includes(search.toLowerCase());
+                (d?.studentId ?? "").toLowerCase().includes(search.toLowerCase());
             const matchStatus =
                 statusFilter === "all" ||
                 (statusFilter === "active" ? u.isActive : !u.isActive);
-            return matchSearch && matchStatus;
+            const matchProgram = programFilter === "all" || d?.currentProgram === programFilter;
+            const matchDept =
+                departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
+            const matchLevel = levelFilter === "all" || String(d?.level ?? "") === levelFilter;
+            const matchSemester =
+                semesterFilter === "all" || String(d?.semester ?? "") === semesterFilter;
+            return (
+                matchSearch && matchStatus && matchProgram && matchDept && matchLevel && matchSemester
+            );
         });
-    }, [users, search, statusFilter]);
+    }, [users, search, statusFilter, programFilter, departmentFilter, levelFilter, semesterFilter]);
 
-    /* ---------- group by Level + Semester ---------- */
-    const groups = useMemo<StudentGroup[]>(() => {
-        const map = new Map<string, StudentGroup>();
+    const activeFilterCount = [
+        programFilter,
+        departmentFilter,
+        levelFilter,
+        semesterFilter,
+        statusFilter,
+    ].filter((f) => f !== "all").length;
+
+    const clearFilters = () => {
+        setProgramFilter("all");
+        setDepartmentFilter("all");
+        setLevelFilter("all");
+        setSemesterFilter("all");
+        setStatusFilter("all");
+    };
+
+    /* ---------- grouping: Program → Department → Level+Semester ---------- */
+    const programGroups = useMemo<ProgramGroup[]>(() => {
+        const map = new Map<string, Map<string, Map<string, AdminUser[]>>>();
 
         for (const u of filtered) {
-            const level = u.studentDetails?.level ?? null;
-            const semester = u.studentDetails?.semester ?? null;
-            const hasGroup = level !== null && semester !== null;
-            const key = hasGroup ? `level-${level}-semester-${semester}` : "uncategorized";
+            if (!hasFullDetails(u)) continue;
+            const d = u.studentDetails!;
+            const dept = d.department.trim();
+            const lsKey = `${d.level}-${d.semester}`;
 
-            if (!map.has(key)) {
-                map.set(key, {
-                    key,
-                    label: hasGroup
-                        ? `Level ${level} — Semester ${semester}`
-                        : "Uncategorized (no level / semester)",
-                    level,
-                    semester,
-                    students: [],
-                });
-            }
-            map.get(key)!.students.push(u);
+            if (!map.has(d.currentProgram)) map.set(d.currentProgram, new Map());
+            const deptMap = map.get(d.currentProgram)!;
+            if (!deptMap.has(dept)) deptMap.set(dept, new Map());
+            const lsMap = deptMap.get(dept)!;
+            if (!lsMap.has(lsKey)) lsMap.set(lsKey, []);
+            lsMap.get(lsKey)!.push(u);
         }
 
-        const list = Array.from(map.values());
-
-        // alphabetical inside each group
-        for (const g of list) {
-            g.students.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        // Level asc → Semester asc, Uncategorized last
-        list.sort((a, b) => {
-            if (a.level === null) return 1;
-            if (b.level === null) return -1;
-            if (a.level !== b.level) return a.level - b.level;
-            return (a.semester ?? 0) - (b.semester ?? 0);
+        const programs = Array.from(map.keys()).sort((a, b) => {
+            const ia = PROGRAM_ORDER[a] ?? 99;
+            const ib = PROGRAM_ORDER[b] ?? 99;
+            return ia - ib || a.localeCompare(b);
         });
 
-        return list;
+        return programs.map((program) => {
+            const deptMap = map.get(program)!;
+            const depts: DeptGroup[] = Array.from(deptMap.keys())
+                .sort((a, b) => a.localeCompare(b))
+                .map((deptName) => {
+                    const lsMap = deptMap.get(deptName)!;
+                    const groups: LevelSemGroup[] = Array.from(lsMap.entries())
+                        .map(([key, students]) => {
+                            const [level, semester] = key.split("-").map(Number);
+                            return {
+                                key,
+                                level,
+                                semester,
+                                students: [...students].sort((a, b) => a.name.localeCompare(b.name)),
+                            };
+                        })
+                        .sort((a, b) => a.level - b.level || a.semester - b.semester);
+                    return {
+                        name: deptName,
+                        groups,
+                        count: groups.reduce((s, g) => s + g.students.length, 0),
+                    };
+                });
+            return {
+                name: program,
+                depts,
+                count: depts.reduce((s, d) => s + d.count, 0),
+            };
+        });
     }, [filtered]);
+
+    const uncategorized = useMemo(
+        () =>
+            filtered
+                .filter((u) => !hasFullDetails(u))
+                .sort((a, b) => a.name.localeCompare(b.name)),
+        [filtered]
+    );
 
     /* ---------- actions ---------- */
     const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
@@ -109,7 +212,7 @@ export function AdminStudentsView() {
         }
     };
 
-    /* ---------- table columns (shared by every group) ---------- */
+    /* ---------- table columns ---------- */
     const columns = [
         { key: "name", header: "Name" },
         { key: "email", header: "Email" },
@@ -119,16 +222,6 @@ export function AdminStudentsView() {
             render: (u: AdminUser) =>
                 u.studentDetails?.studentId ? (
                     <span className="text-sm text-gray-900">{u.studentDetails.studentId}</span>
-                ) : (
-                    <span className="text-gray-400">—</span>
-                ),
-        },
-        {
-            key: "program",
-            header: "Program",
-            render: (u: AdminUser) =>
-                u.studentDetails?.currentProgram ? (
-                    <span className="text-sm text-gray-800">{u.studentDetails.currentProgram}</span>
                 ) : (
                     <span className="text-gray-400">—</span>
                 ),
@@ -173,7 +266,7 @@ export function AdminStudentsView() {
                 <div>
                     <h1 className="text-3xl font-semibold text-gray-900">Manage Students</h1>
                     <p className="mt-1 text-sm text-gray-600">
-                        {users.length} students total • grouped by level &amp; semester
+                        {users.length} students total • {filtered.length} shown
                     </p>
                 </div>
                 <button
@@ -186,7 +279,7 @@ export function AdminStudentsView() {
                 </button>
             </div>
 
-            {/* Filters */}
+            {/* Search + advanced filters toggle */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -198,51 +291,191 @@ export function AdminStudentsView() {
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-md border border-gray-400/80 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+
+                <button
+                    type="button"
+                    onClick={() => setFiltersOpen((v) => !v)}
+                    className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
+                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                        }`}
                 >
-                    <option value="all">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Advanced filters
+                    {activeFilterCount > 0 && (
+                        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#1a63d8] px-1.5 text-xs font-semibold text-white">
+                            {activeFilterCount}
+                        </span>
+                    )}
+                </button>
+
+                {activeFilterCount > 0 && (
+                    <button
+                        type="button"
+                        onClick={clearFilters}
+                        className="cursor-pointer text-sm font-medium text-[#1a73e8] hover:underline"
+                    >
+                        Clear all
+                    </button>
+                )}
             </div>
 
-            {/* Grouped tables */}
-            <div className="mt-8 space-y-10">
-                {groups.length === 0 && (
+            {/* Advanced filter panel */}
+            {filtersOpen && (
+                <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Program</span>
+                        <select
+                            value={programFilter}
+                            onChange={(e) => setProgramFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Programs</option>
+                            {PROGRAM_TYPES.map((p) => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Department</span>
+                        <select
+                            value={departmentFilter}
+                            onChange={(e) => setDepartmentFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Departments</option>
+                            {departmentOptions.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Level</span>
+                        <select
+                            value={levelFilter}
+                            onChange={(e) => setLevelFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Levels</option>
+                            {LEVEL_OPTIONS.map((l) => (
+                                <option key={l} value={l}>Level {l}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Semester</span>
+                        <select
+                            value={semesterFilter}
+                            onChange={(e) => setSemesterFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Semesters</option>
+                            {SEMESTER_OPTIONS.map((s) => (
+                                <option key={s} value={s}>Semester {s}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Status</span>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </label>
+                </div>
+            )}
+
+            {/* Grouped results */}
+            <div className="mt-8 space-y-12">
+                {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
                         <p className="text-sm text-gray-600">No students match your filters.</p>
                     </div>
                 )}
 
-                {groups.map((group) => (
-                    <section key={group.key}>
-                        {/* Group header */}
-                        <div className="flex items-center justify-between px-1">
+                {/* Program → Department → Level/Semester */}
+                {programGroups.map((pg) => (
+                    <section key={pg.name}>
+                        {/* Program header */}
+                        <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
                             <div className="flex items-center gap-3">
-                                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6]">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6]">
                                     <GraduationCap className="h-5 w-5" />
                                 </span>
-                                <h2 className="text-xl text-gray-900">{group.label}</h2>
+                                <h2 className="text-2xl text-gray-900">{pg.name}</h2>
                             </div>
                             <span className="text-sm font-medium text-gray-600">
-                                {group.students.length} student{group.students.length === 1 ? "" : "s"}
+                                {pg.count} student{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
 
-                        {/* Group table */}
-                        <div className="mt-3">
+                        {/* Departments */}
+                        {pg.depts.map((dept) => (
+                            <div key={dept.name} className="mt-6">
+                                <div className="flex items-center justify-between px-1">
+                                    <h3 className="text-xl text-gray-800">{dept.name}</h3>
+                                    <span className="text-xs font-medium text-gray-500">
+                                        {dept.count} student{dept.count === 1 ? "" : "s"}
+                                    </span>
+                                </div>
+
+                                {/* Level + Semester groups */}
+                                <div className="mt-4 space-y-6">
+                                    {dept.groups.map((g) => (
+                                        <div key={g.key}>
+                                            <div className="mb-2 flex items-center gap-2 px-1">
+                                                <span className="rounded-full bg-[#e8f0fe] px-3 py-1 text-xs font-medium text-[#174ea6]">
+                                                    Level {g.level} • Semester {g.semester}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {g.students.length} student{g.students.length === 1 ? "" : "s"}
+                                                </span>
+                                            </div>
+                                            <DataTable
+                                                columns={columns}
+                                                data={g.students}
+                                                keyExtractor={(u) => u.id}
+                                                emptyMessage="No students in this group."
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </section>
+                ))}
+
+                {/* Students with incomplete details */}
+                {uncategorized.length > 0 && (
+                    <section>
+                        <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
+                            <h2 className="text-2xl text-gray-900">Uncategorized</h2>
+                            <span className="text-sm font-medium text-gray-600">
+                                {uncategorized.length} student{uncategorized.length === 1 ? "" : "s"}
+                            </span>
+                        </div>
+                        <p className="mt-2 px-1 text-xs text-gray-500">
+                            Students missing program, department, level or semester details.
+                        </p>
+                        <div className="mt-4">
                             <DataTable
                                 columns={columns}
-                                data={group.students}
+                                data={uncategorized}
                                 keyExtractor={(u) => u.id}
                                 emptyMessage="No students in this group."
                             />
                         </div>
                     </section>
-                ))}
+                )}
             </div>
 
             {/* Modals */}
