@@ -14,8 +14,15 @@ const PROGRAM_TYPES: StudentProgramType[] = [
     "PhD",
 ];
 
-const LEVEL_OPTIONS = ["1", "2", "3", "4"];
-const SEMESTER_OPTIONS = ["1", "2"];
+const SEMESTER_PERIODS = ["January-June", "July-December"];
+
+// Dynamic year range: 2000 to current year + 1 (auto-updates every year)
+const START_YEAR = 2000;
+const END_YEAR = new Date().getFullYear() + 1;
+const YEAR_OPTIONS = Array.from(
+    { length: END_YEAR - START_YEAR + 1 },
+    (_, i) => String(START_YEAR + i)
+);
 
 const EMPTY_DETAILS: StudentDetails = {
     fathersName: "",
@@ -28,8 +35,7 @@ const EMPTY_DETAILS: StudentDetails = {
     department: "",
     currentProgram: "Undergraduate",
     session: "",
-    level: 1,
-    semester: 1,
+    semesterSession: "",
     address: { street: "", city: "", state: "", zip: "", country: "" },
 };
 
@@ -47,13 +53,28 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    // Separate state for the two semester dropdowns
+    const [semesterPeriod, setSemesterPeriod] = useState("");
+    const [semesterYear, setSemesterYear] = useState("");
+
     useEffect(() => {
         if (open) {
             setName(user?.name ?? "");
             setEmail(user?.email ?? "");
-            setDetails(user?.studentDetails ?? EMPTY_DETAILS);
             setIsActive(user?.isActive ?? true);
             setErrors({});
+
+            if (user?.studentDetails) {
+                setDetails(user.studentDetails);
+                // Parse existing semesterSession into period and year
+                const parts = user.studentDetails.semesterSession?.split("/") ?? [];
+                setSemesterPeriod(parts[0] ?? "");
+                setSemesterYear(parts[1] ?? "");
+            } else {
+                setDetails(EMPTY_DETAILS);
+                setSemesterPeriod("");
+                setSemesterYear("");
+            }
         }
     }, [open, user]);
 
@@ -78,6 +99,16 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         clearError(key as string);
     };
 
+    const handleSemesterPeriodChange = (value: string) => {
+        setSemesterPeriod(value);
+        clearError("semesterSession");
+    };
+
+    const handleSemesterYearChange = (value: string) => {
+        setSemesterYear(value);
+        clearError("semesterSession");
+    };
+
     const validate = () => {
         const next: Record<string, string> = {};
         if (!name.trim()) next.name = "Full name is required.";
@@ -85,6 +116,7 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = "Enter a valid email.";
         if (!details.studentId.trim()) next.studentId = "Student ID is required.";
         if (!details.address.country) next.country = "Country is required.";
+        if (!semesterPeriod || !semesterYear) next.semesterSession = "Semester period and year are required.";
         return next;
     };
 
@@ -92,12 +124,19 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         const errs = validate();
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
+
+        // Combine period and year into the stored format
+        const combinedSemesterSession = `${semesterPeriod}/${semesterYear}`;
+
         onSave({
             name: name.trim(),
             email: email.trim(),
             role: "Student",
             isActive,
-            studentDetails: details,
+            studentDetails: {
+                ...details,
+                semesterSession: combinedSemesterSession,
+            },
         });
     };
 
@@ -120,7 +159,7 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
                     </button>
                 </div>
 
-                {/* Scrollable body */}
+                {/* Body */}
                 <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-6">
                     {/* Account */}
                     <section>
@@ -191,24 +230,41 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
                                 placeholder="Select program type"
                             />
                             <Field label="Session" value={details.session} onChange={(v) => setField("session", v)} />
+
+                            {/* Semester Period Dropdown */}
                             <SelectField
-                                label="Level"
-                                value={String(details.level)}
-                                onChange={(v) => setField("level", Number(v) || 1)}
-                                options={LEVEL_OPTIONS}
-                                placeholder="Select level"
+                                label="Semester Period"
+                                required
+                                value={semesterPeriod}
+                                onChange={handleSemesterPeriodChange}
+                                options={SEMESTER_PERIODS}
+                                error={errors.semesterSession}
+                                placeholder="Select semester period"
                             />
+
+                            {/* Year Dropdown */}
                             <SelectField
-                                label="Semester"
-                                value={String(details.semester)}
-                                onChange={(v) => setField("semester", Number(v) || 1)}
-                                options={SEMESTER_OPTIONS}
-                                placeholder="Select semester"
+                                label="Year"
+                                required
+                                value={semesterYear}
+                                onChange={handleSemesterYearChange}
+                                options={YEAR_OPTIONS}
+                                error={errors.semesterSession ? " " : undefined}
+                                placeholder="Select year"
                             />
                         </div>
+                        {errors.semesterSession && (
+                            <p className="mt-2 text-sm text-[#c5221f]">{errors.semesterSession}</p>
+                        )}
+                        {/* Preview of combined value */}
+                        {semesterPeriod && semesterYear && (
+                            <p className="mt-3 text-xs text-gray-500">
+                                Stored as: <span className="font-medium text-gray-800">{semesterPeriod}/{semesterYear}</span>
+                            </p>
+                        )}
                     </section>
 
-                    {/* Location (combined local + international format) */}
+                    {/* Location */}
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">Location</h3>
                         <div className="grid gap-5 md:grid-cols-2">

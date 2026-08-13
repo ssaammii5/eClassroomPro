@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { GraduationCap, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+
 import type { AdminUser } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
@@ -10,14 +11,9 @@ import { StatusBadge } from "./StatusBadge";
 import { StudentFormModal } from "./StudentFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-/* ---------- constants & helpers ---------- */
-
 const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
     PROGRAM_TYPES.map((p, i) => [p, i])
 );
-
-const LEVEL_OPTIONS = ["1", "2", "3", "4"];
-const SEMESTER_OPTIONS = ["1", "2"];
 
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.studentDetails;
@@ -25,22 +21,21 @@ function hasFullDetails(u: AdminUser): boolean {
         !!d &&
         !!d.currentProgram &&
         !!d.department?.trim() &&
-        d.level != null &&
-        d.semester != null
+        !!d.semesterSession?.trim()
     );
 }
 
-interface LevelSemGroup {
+interface SemesterSessionGroup {
     key: string;
-    level: number;
-    semester: number;
     students: AdminUser[];
 }
+
 interface DeptGroup {
     name: string;
-    groups: LevelSemGroup[];
+    groups: SemesterSessionGroup[];
     count: number;
 }
+
 interface ProgramGroup {
     name: string;
     depts: DeptGroup[];
@@ -51,22 +46,16 @@ export function AdminStudentsView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Student")
     );
-
-    /* ---------- filters ---------- */
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [programFilter, setProgramFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
-    const [levelFilter, setLevelFilter] = useState("all");
-    const [semesterFilter, setSemesterFilter] = useState("all");
+    const [semesterSessionFilter, setSemesterSessionFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
-
-    /* ---------- modals ---------- */
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
-    /* Department options depend on selected program (cascading filter) */
     const departmentOptions = useMemo(() => {
         const base =
             programFilter === "all"
@@ -77,14 +66,28 @@ export function AdminStudentsView() {
         ).sort((a, b) => a.localeCompare(b));
     }, [users, programFilter]);
 
-    /* Reset department if it no longer exists under the chosen program */
+    const semesterSessionOptions = useMemo(() => {
+        const base =
+            programFilter === "all"
+                ? users
+                : users.filter((u) => u.studentDetails?.currentProgram === programFilter);
+        return Array.from(
+            new Set(base.map((u) => u.studentDetails?.semesterSession?.trim() ?? "").filter(Boolean))
+        ).sort((a, b) => a.localeCompare(b));
+    }, [users, programFilter]);
+
     useEffect(() => {
         if (departmentFilter !== "all" && !departmentOptions.includes(departmentFilter)) {
             setDepartmentFilter("all");
         }
     }, [departmentOptions, departmentFilter]);
 
-    /* ---------- filtering ---------- */
+    useEffect(() => {
+        if (semesterSessionFilter !== "all" && !semesterSessionOptions.includes(semesterSessionFilter)) {
+            setSemesterSessionFilter("all");
+        }
+    }, [semesterSessionOptions, semesterSessionFilter]);
+
     const filtered = useMemo(() => {
         return users.filter((u) => {
             const d = u.studentDetails;
@@ -98,32 +101,29 @@ export function AdminStudentsView() {
             const matchProgram = programFilter === "all" || d?.currentProgram === programFilter;
             const matchDept =
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
-            const matchLevel = levelFilter === "all" || String(d?.level ?? "") === levelFilter;
-            const matchSemester =
-                semesterFilter === "all" || String(d?.semester ?? "") === semesterFilter;
+            const matchSemesterSession =
+                semesterSessionFilter === "all" || (d?.semesterSession?.trim() ?? "") === semesterSessionFilter;
+
             return (
-                matchSearch && matchStatus && matchProgram && matchDept && matchLevel && matchSemester
+                matchSearch && matchStatus && matchProgram && matchDept && matchSemesterSession
             );
         });
-    }, [users, search, statusFilter, programFilter, departmentFilter, levelFilter, semesterFilter]);
+    }, [users, search, statusFilter, programFilter, departmentFilter, semesterSessionFilter]);
 
     const activeFilterCount = [
         programFilter,
         departmentFilter,
-        levelFilter,
-        semesterFilter,
+        semesterSessionFilter,
         statusFilter,
     ].filter((f) => f !== "all").length;
 
     const clearFilters = () => {
         setProgramFilter("all");
         setDepartmentFilter("all");
-        setLevelFilter("all");
-        setSemesterFilter("all");
+        setSemesterSessionFilter("all");
         setStatusFilter("all");
     };
 
-    /* ---------- grouping: Program → Department → Level+Semester ---------- */
     const programGroups = useMemo<ProgramGroup[]>(() => {
         const map = new Map<string, Map<string, Map<string, AdminUser[]>>>();
 
@@ -131,14 +131,14 @@ export function AdminStudentsView() {
             if (!hasFullDetails(u)) continue;
             const d = u.studentDetails!;
             const dept = d.department.trim();
-            const lsKey = `${d.level}-${d.semester}`;
+            const ssKey = d.semesterSession.trim();
 
             if (!map.has(d.currentProgram)) map.set(d.currentProgram, new Map());
             const deptMap = map.get(d.currentProgram)!;
             if (!deptMap.has(dept)) deptMap.set(dept, new Map());
-            const lsMap = deptMap.get(dept)!;
-            if (!lsMap.has(lsKey)) lsMap.set(lsKey, []);
-            lsMap.get(lsKey)!.push(u);
+            const ssMap = deptMap.get(dept)!;
+            if (!ssMap.has(ssKey)) ssMap.set(ssKey, []);
+            ssMap.get(ssKey)!.push(u);
         }
 
         const programs = Array.from(map.keys()).sort((a, b) => {
@@ -152,24 +152,21 @@ export function AdminStudentsView() {
             const depts: DeptGroup[] = Array.from(deptMap.keys())
                 .sort((a, b) => a.localeCompare(b))
                 .map((deptName) => {
-                    const lsMap = deptMap.get(deptName)!;
-                    const groups: LevelSemGroup[] = Array.from(lsMap.entries())
-                        .map(([key, students]) => {
-                            const [level, semester] = key.split("-").map(Number);
-                            return {
-                                key,
-                                level,
-                                semester,
-                                students: [...students].sort((a, b) => a.name.localeCompare(b.name)),
-                            };
-                        })
-                        .sort((a, b) => a.level - b.level || a.semester - b.semester);
+                    const ssMap = deptMap.get(deptName)!;
+                    const groups: SemesterSessionGroup[] = Array.from(ssMap.entries())
+                        .map(([key, students]) => ({
+                            key,
+                            students: [...students].sort((a, b) => a.name.localeCompare(b.name)),
+                        }))
+                        .sort((a, b) => a.key.localeCompare(b.key));
+
                     return {
                         name: deptName,
                         groups,
                         count: groups.reduce((s, g) => s + g.students.length, 0),
                     };
                 });
+
             return {
                 name: program,
                 depts,
@@ -186,7 +183,6 @@ export function AdminStudentsView() {
         [filtered]
     );
 
-    /* ---------- actions ---------- */
     const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
         if (editingUser) {
             setUsers((prev) =>
@@ -212,7 +208,6 @@ export function AdminStudentsView() {
         }
     };
 
-    /* ---------- table columns ---------- */
     const columns = [
         { key: "name", header: "Name" },
         { key: "email", header: "Email" },
@@ -222,6 +217,16 @@ export function AdminStudentsView() {
             render: (u: AdminUser) =>
                 u.studentDetails?.studentId ? (
                     <span className="text-sm text-gray-900">{u.studentDetails.studentId}</span>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                ),
+        },
+        {
+            key: "semesterSession",
+            header: "Semester",
+            render: (u: AdminUser) =>
+                u.studentDetails?.semesterSession ? (
+                    <span className="text-sm text-gray-900">{u.studentDetails.semesterSession}</span>
                 ) : (
                     <span className="text-gray-400">—</span>
                 ),
@@ -279,7 +284,7 @@ export function AdminStudentsView() {
                 </button>
             </div>
 
-            {/* Search + advanced filters toggle */}
+            {/* Search + Filter Toggle */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -291,13 +296,12 @@ export function AdminStudentsView() {
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
-
                 <button
                     type="button"
                     onClick={() => setFiltersOpen((v) => !v)}
                     className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                        ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                        : "border-gray-400 text-gray-700 hover:bg-gray-50"
                         }`}
                 >
                     <SlidersHorizontal className="h-4 w-4" />
@@ -308,7 +312,6 @@ export function AdminStudentsView() {
                         </span>
                     )}
                 </button>
-
                 {activeFilterCount > 0 && (
                     <button
                         type="button"
@@ -320,9 +323,9 @@ export function AdminStudentsView() {
                 )}
             </div>
 
-            {/* Advanced filter panel */}
+            {/* Filter Panel */}
             {filtersOpen && (
-                <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Program</span>
                         <select
@@ -336,7 +339,6 @@ export function AdminStudentsView() {
                             ))}
                         </select>
                     </label>
-
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Department</span>
                         <select
@@ -350,35 +352,19 @@ export function AdminStudentsView() {
                             ))}
                         </select>
                     </label>
-
-                    <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-gray-600">Level</span>
-                        <select
-                            value={levelFilter}
-                            onChange={(e) => setLevelFilter(e.target.value)}
-                            className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                        >
-                            <option value="all">All Levels</option>
-                            {LEVEL_OPTIONS.map((l) => (
-                                <option key={l} value={l}>Level {l}</option>
-                            ))}
-                        </select>
-                    </label>
-
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Semester</span>
                         <select
-                            value={semesterFilter}
-                            onChange={(e) => setSemesterFilter(e.target.value)}
+                            value={semesterSessionFilter}
+                            onChange={(e) => setSemesterSessionFilter(e.target.value)}
                             className="w-full rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                         >
                             <option value="all">All Semesters</option>
-                            {SEMESTER_OPTIONS.map((s) => (
-                                <option key={s} value={s}>Semester {s}</option>
+                            {semesterSessionOptions.map((s) => (
+                                <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
                     </label>
-
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Status</span>
                         <select
@@ -394,7 +380,7 @@ export function AdminStudentsView() {
                 </div>
             )}
 
-            {/* Grouped results */}
+            {/* Grouped Student Lists */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -402,10 +388,10 @@ export function AdminStudentsView() {
                     </div>
                 )}
 
-                {/* Program → Department → Level/Semester */}
+                {/* Program Groups */}
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
-                        {/* Program header */}
+                        {/* Program Header */}
                         <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
                             <div className="flex items-center gap-3">
                                 <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6]">
@@ -418,7 +404,7 @@ export function AdminStudentsView() {
                             </span>
                         </div>
 
-                        {/* Departments */}
+                        {/* Department Groups */}
                         {pg.depts.map((dept) => (
                             <div key={dept.name} className="mt-6">
                                 <div className="flex items-center justify-between px-1">
@@ -428,13 +414,13 @@ export function AdminStudentsView() {
                                     </span>
                                 </div>
 
-                                {/* Level + Semester groups */}
+                                {/* Semester Session Groups */}
                                 <div className="mt-4 space-y-6">
                                     {dept.groups.map((g) => (
                                         <div key={g.key}>
                                             <div className="mb-2 flex items-center gap-2 px-1">
                                                 <span className="rounded-full bg-[#e8f0fe] px-3 py-1 text-xs font-medium text-[#174ea6]">
-                                                    Level {g.level} • Semester {g.semester}
+                                                    {g.key}
                                                 </span>
                                                 <span className="text-xs text-gray-500">
                                                     {g.students.length} student{g.students.length === 1 ? "" : "s"}
@@ -454,7 +440,7 @@ export function AdminStudentsView() {
                     </section>
                 ))}
 
-                {/* Students with incomplete details */}
+                {/* Uncategorized */}
                 {uncategorized.length > 0 && (
                     <section>
                         <div className="flex items-center justify-between border-b-2 border-gray-300 pb-3">
@@ -464,7 +450,7 @@ export function AdminStudentsView() {
                             </span>
                         </div>
                         <p className="mt-2 px-1 text-xs text-gray-500">
-                            Students missing program, department, level or semester details.
+                            Students missing program, department, or semester details.
                         </p>
                         <div className="mt-4">
                             <DataTable
@@ -485,7 +471,6 @@ export function AdminStudentsView() {
                 onSave={handleSave}
                 onClose={() => { setModalOpen(false); setEditingUser(null); }}
             />
-
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="Delete Student"
