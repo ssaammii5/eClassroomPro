@@ -99,14 +99,14 @@ export const academicDepartments: AcademicDepartment[] = [
 ];
 
 export const academicSemesters: AcademicSemester[] = [
-    { id: 1, name: "January-June/2023" },
-    { id: 2, name: "July-December/2023" },
-    { id: 3, name: "January-June/2024" },
-    { id: 4, name: "July-December/2024" },
-    { id: 5, name: "January-June/2025" },
-    { id: 6, name: "July-December/2025" },
-    { id: 7, name: "January-June/2026" },
     { id: 8, name: "July-December/2026" },
+    { id: 7, name: "January-June/2026" },
+    { id: 6, name: "July-December/2025" },
+    { id: 5, name: "January-June/2025" },
+    { id: 4, name: "July-December/2024" },
+    { id: 3, name: "January-June/2024" },
+    { id: 2, name: "July-December/2023" },
+    { id: 1, name: "January-June/2023" },
 ];
 
 export interface AdminUser {

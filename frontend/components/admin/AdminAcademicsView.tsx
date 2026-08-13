@@ -16,6 +16,19 @@ const TABS: { id: AcademicTab; label: string; icon: React.ReactNode }[] = [
     { id: "semesters", label: "Semesters", icon: <CalendarRange className="h-4 w-4" /> },
 ];
 
+/**
+ * Returns a numeric rank for a semester string like "January-June/2025".
+ * Higher rank = more recent semester.
+ * July-December gets +1 over January-June within the same year.
+ */
+function semesterRank(name: string): number {
+    const [period, yearStr] = name.split("/");
+    const year = Number(yearStr);
+    if (!Number.isFinite(year)) return 0;
+    const periodIndex = period === "July-December" ? 1 : 0;
+    return year * 2 + periodIndex;
+}
+
 export function AdminAcademicsView() {
     const [activeTab, setActiveTab] = useState<AcademicTab>("programs");
 
@@ -55,9 +68,9 @@ export function AdminAcademicsView() {
     }, [departments, departmentSearch]);
 
     const filteredSemesters = useMemo(() => {
-        return semesters.filter((s) =>
-            s.name.toLowerCase().includes(semesterSearch.toLowerCase())
-        );
+        return semesters
+            .filter((s) => s.name.toLowerCase().includes(semesterSearch.toLowerCase()))
+            .sort((a, b) => semesterRank(b.name) - semesterRank(a.name));
     }, [semesters, semesterSearch]);
 
     // Handlers
