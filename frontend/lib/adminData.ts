@@ -28,6 +28,33 @@ export interface StudentDetails {
     address: StudentAddress;
 }
 
+export interface TeacherAddress {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+}
+
+export type TeacherDesignation =
+    | "Professor"
+    | "Associate Professor"
+    | "Assistant Professor"
+    | "Senior Lecturer"
+    | "Lecturer";
+
+export interface TeacherDetails {
+    teacherId: string;
+    designation: TeacherDesignation;
+    department: string;
+    qualification: string;
+    dateOfBirth: string;
+    joiningDate: string;
+    mobile: string;
+    nationality: string;
+    address: TeacherAddress;
+}
+
 export interface AdminUser {
     id: number;
     name: string;
@@ -36,6 +63,7 @@ export interface AdminUser {
     isActive: boolean;
     createdAt: string;
     studentDetails?: StudentDetails;
+    teacherDetails?: TeacherDetails;
 }
 
 export interface AdminCourse {
@@ -87,10 +115,42 @@ export interface AppSetting {
 
 export const adminUsers: AdminUser[] = [
     { id: 1, name: "Admin User", email: "admin@eclassroompro.com", role: "Admin", isActive: true, createdAt: "2024-01-01" },
-    { id: 2, name: "Md. Mahbubur Rahman", email: "mahbubur@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-05" },
-    { id: 3, name: "Prof. Dr. Abdul Masud", email: "abdul.masud@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-05" },
-    { id: 4, name: "Farjana Sultana Mim", email: "farjana@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-10" },
-    { id: 5, name: "Chinmay Bepery", email: "chinmay@eclassroompro.com", role: "Teacher", isActive: false, createdAt: "2024-01-12" },
+    {
+        id: 2, name: "Md. Mahbubur Rahman", email: "mahbubur@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-05",
+        teacherDetails: {
+            teacherId: "FAC-2001", designation: "Assistant Professor", department: "CSE",
+            qualification: "M.Sc. in CSE", dateOfBirth: "1985-04-12", joiningDate: "2019-01-15",
+            mobile: "+880 1711-223344", nationality: "Bangladeshi",
+            address: { street: "House 45, Road 12, Banani", city: "Dhaka", state: "Dhaka Division", zip: "1213", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 3, name: "Prof. Dr. Abdul Masud", email: "abdul.masud@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-05",
+        teacherDetails: {
+            teacherId: "FAC-2002", designation: "Professor", department: "CSE",
+            qualification: "Ph.D. in CSE", dateOfBirth: "1972-09-30", joiningDate: "2010-08-01",
+            mobile: "+880 1811-556677", nationality: "Bangladeshi",
+            address: { street: "House 8, Road 3, Dhanmondi", city: "Dhaka", state: "Dhaka Division", zip: "1205", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 4, name: "Farjana Sultana Mim", email: "farjana@eclassroompro.com", role: "Teacher", isActive: true, createdAt: "2024-01-10",
+        teacherDetails: {
+            teacherId: "FAC-2003", designation: "Lecturer", department: "CSE",
+            qualification: "M.Sc. in CSE", dateOfBirth: "1993-07-19", joiningDate: "2021-03-01",
+            mobile: "+880 1911-889900", nationality: "Bangladeshi",
+            address: { street: "Flat 7A, Road 27, Gulshan 1", city: "Dhaka", state: "Dhaka Division", zip: "1212", country: "Bangladesh" },
+        },
+    },
+    {
+        id: 5, name: "Chinmay Bepery", email: "chinmay@eclassroompro.com", role: "Teacher", isActive: false, createdAt: "2024-01-12",
+        teacherDetails: {
+            teacherId: "FAC-2004", designation: "Associate Professor", department: "EEE",
+            qualification: "Ph.D. in EEE", dateOfBirth: "1980-01-25", joiningDate: "2015-06-10",
+            mobile: "+880 1611-334455", nationality: "Bangladeshi",
+            address: { street: "House 19, Road 6, Uttara", city: "Dhaka", state: "Dhaka Division", zip: "1230", country: "Bangladesh" },
+        },
+    },
     {
         id: 6, name: "Md. Samiur Rahman", email: "samiurinfo@gmail.com", role: "Student", isActive: true, createdAt: "2024-02-01",
         studentDetails: {
