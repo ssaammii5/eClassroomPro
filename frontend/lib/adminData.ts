@@ -67,14 +67,15 @@ export interface AdminUser {
     teacherDetails?: TeacherDetails;
 }
 
+/* ─── Updated AdminCourse ─── */
 export interface AdminCourse {
     id: number;
     name: string;
+    department: string;
     subject: string;
-    teacherId: number | null;
-    teacherName: string | null;
-    studentCount: number;
-    session: string;
+    teacherIds: number[];
+    studentIds: number[];
+    session: string;          // format: "January-June/2025"
     isActive: boolean;
 }
 
@@ -192,13 +193,14 @@ export const adminUsers: AdminUser[] = [
     },
 ];
 
+/* ─── Updated mock courses with new fields ─── */
 export const adminCourses: AdminCourse[] = [
-    { id: 1, name: "CIT-6102: Advanced Algorithms", subject: "MS in CSIT", teacherId: 3, teacherName: "Prof. Dr. Abdul Masud", studentCount: 32, session: "January-June 2025", isActive: true },
-    { id: 2, name: "CIT-5103: Symbolic Machines", subject: "MS in CSIT", teacherId: 3, teacherName: "Prof. Dr. Abdul Masud", studentCount: 28, session: "January-June 2025", isActive: true },
-    { id: 3, name: "CIT-5109 Natural Language Processing", subject: "MS in CSIT", teacherId: 4, teacherName: "Farjana Sultana Mim", studentCount: 25, session: "January-June 2025", isActive: true },
-    { id: 4, name: "CIT 6105: Information Security", subject: "MS in CSIT", teacherId: 2, teacherName: "Md. Mahbubur Rahman", studentCount: 30, session: "January-June 2024", isActive: true },
-    { id: 5, name: "CIT 5101: Computer Networks", subject: "MS in CSIT", teacherId: 2, teacherName: "Md. Mahbubur Rahman", studentCount: 27, session: "January-June 2023", isActive: false },
-    { id: 6, name: "CCE 423: Cryptography and Network Security", subject: "B.Sc in CCE", teacherId: null, teacherName: null, studentCount: 40, session: "2019-2020", isActive: true },
+    { id: 1, name: "CIT-6102: Advanced Algorithms", department: "CSE", subject: "MS in CSIT", teacherIds: [3], studentIds: [6, 7, 8], session: "January-June/2025", isActive: true },
+    { id: 2, name: "CIT-5103: Symbolic Machines", department: "CSE", subject: "MS in CSIT", teacherIds: [3], studentIds: [6, 7], session: "January-June/2025", isActive: true },
+    { id: 3, name: "CIT-5109 Natural Language Processing", department: "CSE", subject: "MS in CSIT", teacherIds: [4], studentIds: [8, 9], session: "January-June/2025", isActive: true },
+    { id: 4, name: "CIT 6105: Information Security", department: "CSE", subject: "MS in CSIT", teacherIds: [2], studentIds: [6, 7, 8], session: "January-June/2024", isActive: true },
+    { id: 5, name: "CIT 5101: Computer Networks", department: "CSE", subject: "MS in CSIT", teacherIds: [2], studentIds: [9, 10], session: "January-June/2023", isActive: false },
+    { id: 6, name: "CCE 423: Cryptography and Network Security", department: "CSE", subject: "B.Sc in CCE", teacherIds: [], studentIds: [6, 7, 8, 9, 10], session: "July-December/2020", isActive: true },
 ];
 
 export const adminAssignments: AdminAssignment[] = [
