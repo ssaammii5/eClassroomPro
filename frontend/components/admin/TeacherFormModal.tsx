@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { AdminUser, TeacherDetails, TeacherDesignation } from "@/lib/adminData";
-import { COUNTRIES } from "@/components/settings/constants";
+import { TEACHER_DEPARTMENTS } from "@/lib/adminData";
 import { Field, SelectField } from "@/components/settings/FormFields";
 import { X } from "lucide-react";
 
@@ -14,16 +14,12 @@ const DESIGNATION_TYPES: TeacherDesignation[] = [
     "Lecturer",
 ];
 
+const DEPARTMENT_OPTIONS: string[] = [...TEACHER_DEPARTMENTS];
+
 const EMPTY_DETAILS: TeacherDetails = {
     teacherId: "",
     designation: "Assistant Professor",
     department: "",
-    qualification: "",
-    dateOfBirth: "",
-    joiningDate: "",
-    mobile: "",
-    nationality: "",
-    address: { street: "", city: "", state: "", zip: "", country: "" },
 };
 
 interface TeacherFormModalProps {
@@ -63,22 +59,14 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
         clearError(key as string);
     };
 
-    const setAddressField = <K extends keyof TeacherDetails["address"]>(
-        key: K,
-        value: TeacherDetails["address"][K]
-    ) => {
-        setDetails((prev) => ({ ...prev, address: { ...prev.address, [key]: value } }));
-        clearError(key as string);
-    };
-
     const validate = () => {
         const next: Record<string, string> = {};
         if (!name.trim()) next.name = "Full name is required.";
         if (!email.trim()) next.email = "Email is required.";
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = "Enter a valid email.";
         if (!details.teacherId.trim()) next.teacherId = "Teacher ID is required.";
-        if (!details.department.trim()) next.department = "Department is required.";
-        if (!details.address.country) next.country = "Country is required.";
+        if (!details.department) next.department = "Department is required.";
+        if (!details.designation) next.designation = "Designation is required.";
         return next;
     };
 
@@ -86,6 +74,7 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
         const errs = validate();
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
+
         onSave({
             name: name.trim(),
             email: email.trim(),
@@ -116,7 +105,7 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
 
                 {/* Body */}
                 <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-6">
-                    {/* Account */}
+                    {/* Account Section */}
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">Account</h3>
                         <div className="grid gap-5 md:grid-cols-2">
@@ -152,17 +141,7 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
                         </div>
                     </section>
 
-                    {/* Personal Information */}
-                    <section>
-                        <h3 className="mb-4 text-lg font-semibold text-gray-900">Personal Information</h3>
-                        <div className="grid gap-5 md:grid-cols-2">
-                            <Field label="Date of Birth" type="date" value={details.dateOfBirth} onChange={(v) => setField("dateOfBirth", v)} />
-                            <Field label="Mobile Number" type="tel" value={details.mobile} onChange={(v) => setField("mobile", v)} />
-                            <Field label="Nationality" value={details.nationality} onChange={(v) => setField("nationality", v)} />
-                        </div>
-                    </section>
-
-                    {/* Professional Details */}
+                    {/* Professional Details Section */}
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">Professional Details</h3>
                         <div className="grid gap-5 md:grid-cols-2">
@@ -171,14 +150,17 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
                                 required
                                 value={details.teacherId}
                                 onChange={(v) => setField("teacherId", v)}
+                                placeholder="e.g., FAC-2001"
                                 error={errors.teacherId}
                             />
-                            <Field
+                            <SelectField
                                 label="Department"
                                 required
                                 value={details.department}
                                 onChange={(v) => setField("department", v)}
+                                options={DEPARTMENT_OPTIONS}
                                 error={errors.department}
+                                placeholder="Select department"
                             />
                             <SelectField
                                 label="Designation"
@@ -186,34 +168,8 @@ export function TeacherFormModal({ open, user, onSave, onClose }: TeacherFormMod
                                 value={details.designation}
                                 onChange={(v) => setField("designation", v as TeacherDesignation)}
                                 options={DESIGNATION_TYPES}
+                                error={errors.designation}
                                 placeholder="Select designation"
-                            />
-                            <Field label="Qualification" value={details.qualification} onChange={(v) => setField("qualification", v)} />
-                            <Field label="Joining Date" type="date" value={details.joiningDate} onChange={(v) => setField("joiningDate", v)} />
-                        </div>
-                    </section>
-
-                    {/* Location */}
-                    <section>
-                        <h3 className="mb-4 text-lg font-semibold text-gray-900">Location</h3>
-                        <div className="grid gap-5 md:grid-cols-2">
-                            <Field
-                                label="Street Address"
-                                value={details.address.street}
-                                onChange={(v) => setAddressField("street", v)}
-                                placeholder="House, Road, Area"
-                            />
-                            <Field label="City" value={details.address.city} onChange={(v) => setAddressField("city", v)} />
-                            <Field label="State / Province" value={details.address.state} onChange={(v) => setAddressField("state", v)} />
-                            <Field label="ZIP / Postal Code" value={details.address.zip} onChange={(v) => setAddressField("zip", v)} />
-                            <SelectField
-                                label="Country"
-                                required
-                                value={details.address.country}
-                                onChange={(v) => setAddressField("country", v)}
-                                options={COUNTRIES}
-                                error={errors.country}
-                                placeholder="Select your country"
                             />
                         </div>
                     </section>

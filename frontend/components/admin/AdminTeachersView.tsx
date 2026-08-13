@@ -9,7 +9,6 @@ import {
     SlidersHorizontal,
     Trash2,
 } from "lucide-react";
-
 import type { AdminUser, TeacherDesignation } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
@@ -29,12 +28,6 @@ const DESIGNATION_RANK: Record<string, number> = Object.fromEntries(
     DESIGNATION_ORDER.map((d, i) => [d, i])
 );
 
-function joiningRank(dateStr: string | undefined): number {
-    if (!dateStr) return 0;
-    const t = Date.parse(dateStr);
-    return Number.isNaN(t) ? 0 : t;
-}
-
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.teacherDetails;
     return !!d && !!d.designation && !!d.department?.trim();
@@ -52,8 +45,6 @@ interface DeptGroup {
     count: number;
 }
 
-type JoiningSortOrder = "newest" | "oldest";
-
 export function AdminTeachersView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Teacher")
@@ -63,7 +54,6 @@ export function AdminTeachersView() {
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [designationFilter, setDesignationFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [joiningSort, setJoiningSort] = useState<JoiningSortOrder>("newest");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -79,7 +69,6 @@ export function AdminTeachersView() {
             departmentFilter === "all"
                 ? users
                 : users.filter((u) => u.teacherDetails?.department?.trim() === departmentFilter);
-
         return Array.from(
             new Set(
                 base
@@ -113,7 +102,6 @@ export function AdminTeachersView() {
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
             const matchDesignation =
                 designationFilter === "all" || d?.designation === designationFilter;
-
             return matchSearch && matchStatus && matchDept && matchDesignation;
         });
     }, [users, search, statusFilter, departmentFilter, designationFilter]);
@@ -130,20 +118,16 @@ export function AdminTeachersView() {
 
     const departmentGroups = useMemo<DeptGroup[]>(() => {
         const map = new Map<string, Map<string, AdminUser[]>>();
-
         for (const u of filtered) {
             if (!hasFullDetails(u)) continue;
             const d = u.teacherDetails!;
             const dept = d.department.trim();
-
             if (!map.has(dept)) map.set(dept, new Map());
             const desgMap = map.get(dept)!;
             if (!desgMap.has(d.designation)) desgMap.set(d.designation, []);
             desgMap.get(d.designation)!.push(u);
         }
-
         const departments = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
-
         return departments.map((deptName) => {
             const desgMap = map.get(deptName)!;
             const designations: DesignationGroup[] = Array.from(desgMap.keys())
@@ -154,22 +138,17 @@ export function AdminTeachersView() {
                 })
                 .map((designation) => {
                     const teachers = [...desgMap.get(designation)!].sort((a, b) =>
-                        joiningSort === "newest"
-                            ? joiningRank(b.teacherDetails?.joiningDate) -
-                            joiningRank(a.teacherDetails?.joiningDate)
-                            : joiningRank(a.teacherDetails?.joiningDate) -
-                            joiningRank(b.teacherDetails?.joiningDate)
+                        a.name.localeCompare(b.name)
                     );
                     return { name: designation, teachers, count: teachers.length };
                 });
-
             return {
                 name: deptName,
                 designations,
                 count: designations.reduce((s, g) => s + g.count, 0),
             };
         });
-    }, [filtered, joiningSort]);
+    }, [filtered]);
 
     const uncategorized = useMemo(
         () =>
@@ -299,7 +278,7 @@ export function AdminTeachersView() {
                 </button>
             </div>
 
-            {/* Search + Filters */}
+            {/* Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -312,21 +291,6 @@ export function AdminTeachersView() {
                     />
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Joining sort */}
-                    <label className="flex items-center gap-2">
-                        <span className="whitespace-nowrap text-sm font-medium text-gray-700">
-                            Joining order
-                        </span>
-                        <select
-                            value={joiningSort}
-                            onChange={(e) => setJoiningSort(e.target.value as JoiningSortOrder)}
-                            className="cursor-pointer rounded-md border border-gray-400/80 bg-white px-3 py-2.5 text-sm text-gray-900 focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                        >
-                            <option value="newest">Newest first</option>
-                            <option value="oldest">Oldest first</option>
-                        </select>
-                    </label>
-
                     <button
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
@@ -355,7 +319,7 @@ export function AdminTeachersView() {
                 </div>
             </div>
 
-            {/* Filter panel */}
+            {/* Advanced Filter Panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="block">
@@ -399,7 +363,7 @@ export function AdminTeachersView() {
                 </div>
             )}
 
-            {/* Grouped tables */}
+            {/* Content */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -407,10 +371,10 @@ export function AdminTeachersView() {
                     </div>
                 )}
 
-                {/* Department groups */}
+                {/* Department Groups */}
                 {departmentGroups.map((dept) => (
                     <section key={dept.name}>
-                        {/* Department header */}
+                        {/* Department Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fef7e0] text-[#b06000] sm:h-10 sm:w-10">
@@ -423,7 +387,7 @@ export function AdminTeachersView() {
                             </span>
                         </div>
 
-                        {/* Designation groups */}
+                        {/* Designation Groups */}
                         {dept.designations.map((desg) => (
                             <div key={desg.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
