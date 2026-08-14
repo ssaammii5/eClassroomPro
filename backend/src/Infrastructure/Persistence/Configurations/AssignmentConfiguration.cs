@@ -18,6 +18,13 @@ public class AssignmentConfiguration : IEntityTypeConfiguration<Assignment>
             .HasMaxLength(4000)
             .IsRequired();
 
+        builder.Property(x => x.Topic)
+            .HasMaxLength(300)
+            .IsRequired();
+
+        builder.Property(x => x.Kind)
+            .HasConversion<int>();
+
         builder.Property(x => x.Status)
             .HasConversion<int>();
 

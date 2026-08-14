@@ -35,7 +35,79 @@ public class CourseService
     {
         var course = await _courseRepository.GetByIdWithDetailsAsync(id, cancellationToken)
             ?? throw new NotFoundException("Course not found.");
+
         return ToDto(course);
+    }
+
+    // Phase 8: courses relevant to the current user.
+    public async Task<IReadOnlyList<CourseDto>> GetMyCoursesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_currentUserService.UserId is null)
+        {
+            throw new UnauthorizedAccessException("User identity not found.");
+        }
+
+        var courses = await _courseRepository.GetAllAsync(cancellationToken);
+        var userId = _currentUserService.UserId.Value;
+
+        IEnumerable<Course> filtered;
+
+        if (_currentUserService.IsAdmin)
+        {
+            filtered = courses;
+        }
+        else if (_currentUserService.IsTeacher)
+        {
+            filtered = courses.Where(c =>
+                c.TeacherId == userId ||
+                c.CourseTeachers.Any(ct => ct.TeacherId == userId));
+        }
+        else
+        {
+            filtered = courses.Where(c => c.Enrollments.Any(e => e.UserId == userId));
+        }
+
+        return filtered.Select(ToDto).ToList();
+    }
+
+    // Phase 8: people (teachers + enrolled students) in a course.
+    public async Task<CoursePeopleDto> GetCoursePeopleAsync(int courseId, CancellationToken cancellationToken = default)
+    {
+        if (_currentUserService.UserId is null)
+        {
+            throw new UnauthorizedAccessException("User identity not found.");
+        }
+
+        var course = await _courseRepository.GetByIdWithPeopleAsync(courseId, cancellationToken)
+            ?? throw new NotFoundException("Course not found.");
+
+        var teachers = new List<CoursePersonDto>();
+        var seenTeacherIds = new HashSet<int>();
+
+        if (course.Teacher is not null && seenTeacherIds.Add(course.Teacher.Id))
+        {
+            teachers.Add(MapPerson(course.Teacher, "Teacher"));
+        }
+
+        foreach (var link in course.CourseTeachers)
+        {
+            if (link.Teacher is not null && seenTeacherIds.Add(link.Teacher.Id))
+            {
+                teachers.Add(MapPerson(link.Teacher, "Teacher"));
+            }
+        }
+
+        var students = course.Enrollments
+            .Where(e => e.User is not null)
+            .Select(e => MapPerson(e.User!, "Student"))
+            .OrderBy(s => s.Name)
+            .ToList();
+
+        return new CoursePeopleDto
+        {
+            Teachers = teachers,
+            Students = students
+        };
     }
 
     public async Task<CourseDto> CreateAsync(CreateCourseDto dto, CancellationToken cancellationToken = default)
@@ -99,6 +171,17 @@ public class CourseService
 
         _courseRepository.Remove(course);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private static CoursePersonDto MapPerson(User user, string role)
+    {
+        return new CoursePersonDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Role = role,
+            Email = user.Email
+        };
     }
 
     private async Task SyncTeachersAsync(Course course, List<int> teacherIds, CancellationToken cancellationToken)

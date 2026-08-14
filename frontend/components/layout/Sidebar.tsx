@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { sidebarClasses } from "@/lib/mock-data";
+import { getMyCoursesRequest, type CourseDto } from "@/lib/api/courses";
+import { avatarClassFor, letterOf } from "@/lib/courseTheme";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
@@ -31,12 +32,47 @@ interface SidebarProps {
     onClose?: () => void;
 }
 
+interface EnrolledClass {
+    id: number;
+    name: string;
+    sub?: string;
+    letter: string;
+    avatarClass: string;
+}
+
+function mapCourseToEnrolled(c: CourseDto): EnrolledClass {
+    return {
+        id: c.id,
+        name: c.name,
+        sub: c.session || c.subject || undefined,
+        letter: letterOf(c.name),
+        avatarClass: avatarClassFor(c.id),
+    };
+}
+
 export function Sidebar({ open, mobileReady = true, onExpand, onClose }: SidebarProps) {
     const [enrolledOpen, setEnrolledOpen] = useState(true);
+    const [enrolledClasses, setEnrolledClasses] = useState<EnrolledClass[]>([]);
     const pathname = usePathname();
     const prevPathname = useRef(pathname);
     const { user } = useAuth();
     const isAdmin = user?.role === "Admin";
+
+    // Load the signed-in user's courses for the "Enrolled" section (students/teachers).
+    useEffect(() => {
+        if (isAdmin) return;
+        let cancelled = false;
+        getMyCoursesRequest()
+            .then((dtos) => {
+                if (!cancelled) setEnrolledClasses(dtos.map(mapCourseToEnrolled));
+            })
+            .catch(() => {
+                if (!cancelled) setEnrolledClasses([]);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [isAdmin]);
 
     useEffect(() => {
         if (prevPathname.current === pathname) return;
@@ -84,11 +120,11 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                     onClick={onClose}
                 />
             )}
+
             <aside
                 className={`sticky top-16 h-[calc(100vh-4rem)] shrink-0 self-start overflow-y-auto overflow-x-hidden pb-6 pt-2 transition-all duration-200 ${mobileClasses} ${open ? "w-[300px] px-2" : "w-[72px] px-1.5"}`}
             >
                 <nav className="flex flex-col gap-0.5">
-                    {/* Home */}
                     <NavItem
                         open={open}
                         active={pathname === "/"}
@@ -97,81 +133,25 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         label="Home"
                     />
 
-                    {/* Admin Navigation */}
                     {isAdmin && (
                         <>
-                            <NavItem
-                                open={open}
-                                active={pathname === "/teachers"}
-                                href="/teachers"
-                                icon={<UserRound className="h-6 w-6" />}
-                                label="Teachers"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/students"}
-                                href="/students"
-                                icon={<Users className="h-6 w-6" />}
-                                label="Students"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/courses"}
-                                href="/courses"
-                                icon={<BookOpen className="h-6 w-6" />}
-                                label="Courses"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/academics"}
-                                href="/academics"
-                                icon={<School className="h-6 w-6" />}
-                                label="Academics"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/assignments"}
-                                href="/assignments"
-                                icon={<ClipboardList className="h-6 w-6" />}
-                                label="Assignments"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/submissions"}
-                                href="/submissions"
-                                icon={<FileText className="h-6 w-6" />}
-                                label="Submissions"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname === "/app-settings"}
-                                href="/app-settings"
-                                icon={<Cog className="h-6 w-6" />}
-                                label="App Settings"
-                            />
+                            <NavItem open={open} active={pathname === "/teachers"} href="/teachers" icon={<UserRound className="h-6 w-6" />} label="Teachers" />
+                            <NavItem open={open} active={pathname === "/students"} href="/students" icon={<Users className="h-6 w-6" />} label="Students" />
+                            <NavItem open={open} active={pathname === "/courses"} href="/courses" icon={<BookOpen className="h-6 w-6" />} label="Courses" />
+                            <NavItem open={open} active={pathname === "/academics"} href="/academics" icon={<School className="h-6 w-6" />} label="Academics" />
+                            <NavItem open={open} active={pathname === "/assignments"} href="/assignments" icon={<ClipboardList className="h-6 w-6" />} label="Assignments" />
+                            <NavItem open={open} active={pathname === "/submissions"} href="/submissions" icon={<FileText className="h-6 w-6" />} label="Submissions" />
+                            <NavItem open={open} active={pathname === "/app-settings"} href="/app-settings" icon={<Cog className="h-6 w-6" />} label="App Settings" />
                         </>
                     )}
 
-                    {/* Non-Admin Navigation */}
                     {!isAdmin && (
                         <>
-                            <NavItem
-                                open={open}
-                                active={pathname.startsWith("/calendar")}
-                                href="/calendar"
-                                icon={<CalendarDays className="h-6 w-6" />}
-                                label="Calendar"
-                            />
-                            <NavItem
-                                open={open}
-                                active={pathname.startsWith("/todo")}
-                                href="/todo"
-                                icon={<ListTodo className="h-6 w-6" />}
-                                label="To-do"
-                            />
+                            <NavItem open={open} active={pathname.startsWith("/calendar")} href="/calendar" icon={<CalendarDays className="h-6 w-6" />} label="Calendar" />
+                            <NavItem open={open} active={pathname.startsWith("/todo")} href="/todo" icon={<ListTodo className="h-6 w-6" />} label="To-do" />
+
                             {open && <div className="my-2 h-px bg-gray-300/70" />}
 
-                            {/* Enrolled Classes */}
                             {open ? (
                                 <button
                                     type="button"
@@ -197,9 +177,10 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                                     <GraduationCap className="h-6 w-6" />
                                 </button>
                             )}
+
                             {open && enrolledOpen && (
                                 <>
-                                    {sidebarClasses.map((c) => (
+                                    {enrolledClasses.map((c) => (
                                         <Link
                                             key={c.id}
                                             href={`/class/${c.id}`}
@@ -221,7 +202,6 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
                         </>
                     )}
 
-                    {/* Settings */}
                     <NavItem
                         open={open}
                         active={pathname.startsWith("/settings")}
@@ -255,13 +235,12 @@ function NavItem({ href, icon, label, active = false, badge = false, open }: Nav
             >
                 <span className="relative">
                     {icon}
-                    {badge && (
-                        <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-blue-600" />
-                    )}
+                    {badge && <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-blue-600" />}
                 </span>
             </a>
         );
     }
+
     return (
         <a
             href={href}

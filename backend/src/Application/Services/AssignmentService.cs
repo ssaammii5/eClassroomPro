@@ -10,6 +10,7 @@ public class AssignmentService
 {
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly ICourseRepository _courseRepository;
+    private readonly ISubmissionRepository _submissionRepository;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
@@ -17,12 +18,14 @@ public class AssignmentService
     public AssignmentService(
         IAssignmentRepository assignmentRepository,
         ICourseRepository courseRepository,
+        ISubmissionRepository submissionRepository,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork)
     {
         _assignmentRepository = assignmentRepository;
         _courseRepository = courseRepository;
+        _submissionRepository = submissionRepository;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
@@ -88,6 +91,49 @@ public class AssignmentService
         return ToDto(assignment);
     }
 
+    // Phase 8: classwork for a specific course (role-aware).
+    public async Task<IReadOnlyList<AssignmentDto>> GetForCourseAsync(int courseId, CancellationToken cancellationToken = default)
+    {
+        if (_currentUserService.UserId is null)
+        {
+            throw new UnauthorizedAccessException("User identity not found.");
+        }
+
+        var course = await _courseRepository.GetByIdAsync(courseId, cancellationToken)
+            ?? throw new NotFoundException("Course not found.");
+
+        if (_currentUserService.IsStudent)
+        {
+            var isEnrolled = await _courseRepository.IsStudentEnrolledAsync(
+                courseId,
+                _currentUserService.UserId.Value,
+                cancellationToken);
+
+            if (!isEnrolled)
+            {
+                throw new ForbiddenAccessException("You are not enrolled in this course.");
+            }
+
+            var assignments = await _assignmentRepository.GetPublishedForCourseAsync(courseId, cancellationToken);
+            var mySubmissions = await _submissionRepository.GetByStudentAsync(_currentUserService.UserId.Value, cancellationToken);
+            var subByAssignment = mySubmissions.ToDictionary(s => s.AssignmentId);
+
+            return assignments.Select(a =>
+            {
+                var dto = ToDto(a);
+                dto.MySubmissionStatus = subByAssignment.TryGetValue(a.Id, out var sub)
+                    ? MapSubmissionStatus(sub.Status)
+                    : "Assigned";
+                return dto;
+            }).ToList();
+        }
+
+        EnsureCanManageCourse(course);
+
+        var all = await _assignmentRepository.GetForCourseAsync(courseId, cancellationToken);
+        return all.Select(ToDto).ToList();
+    }
+
     public async Task<int> CreateAsync(CreateAssignmentDto dto, CancellationToken cancellationToken = default)
     {
         if (!_currentUserService.IsTeacher && !_currentUserService.IsAdmin)
@@ -133,6 +179,8 @@ public class AssignmentService
         {
             Title = dto.Title.Trim(),
             Description = dto.Description.Trim(),
+            Topic = dto.Topic?.Trim() ?? string.Empty,
+            Kind = dto.Kind,
             CourseId = course.Id,
             CreatedById = _currentUserService.UserId.Value,
             DeadlineUtc = dto.DeadlineUtc,
@@ -179,6 +227,8 @@ public class AssignmentService
 
         assignment.Title = dto.Title.Trim();
         assignment.Description = dto.Description.Trim();
+        assignment.Topic = dto.Topic?.Trim() ?? string.Empty;
+        assignment.Kind = dto.Kind;
         assignment.DeadlineUtc = dto.DeadlineUtc;
         assignment.MaxMarks = dto.MaxMarks;
         assignment.UpdatedAtUtc = _dateTimeProvider.UtcNow;
@@ -226,6 +276,27 @@ public class AssignmentService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    private void EnsureCanManageCourse(Course course)
+    {
+        if (_currentUserService.IsAdmin)
+        {
+            return;
+        }
+
+        if (!_currentUserService.IsTeacher)
+        {
+            throw new ForbiddenAccessException("Only teachers or admins can manage this course.");
+        }
+
+        var isTeacher = course.TeacherId == _currentUserService.UserId
+            || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
+
+        if (!isTeacher)
+        {
+            throw new ForbiddenAccessException("You do not have permission to manage this course.");
+        }
+    }
+
     private void EnsureCanManageAssignment(Assignment assignment)
     {
         if (_currentUserService.IsAdmin)
@@ -248,6 +319,13 @@ public class AssignmentService
         }
     }
 
+    private static string MapSubmissionStatus(SubmissionStatus status) => status switch
+    {
+        SubmissionStatus.Submitted => "Submitted",
+        SubmissionStatus.Graded => "Graded",
+        _ => "Assigned"
+    };
+
     private static AssignmentDto ToDto(Assignment assignment)
     {
         return new AssignmentDto
@@ -261,6 +339,8 @@ public class AssignmentService
             Session = assignment.Course?.Session,
             Title = assignment.Title,
             Description = assignment.Description,
+            Topic = assignment.Topic,
+            Kind = assignment.Kind,
             DeadlineUtc = assignment.DeadlineUtc,
             MaxMarks = assignment.MaxMarks,
             Status = assignment.Status,

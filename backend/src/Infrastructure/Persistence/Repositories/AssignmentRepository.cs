@@ -61,6 +61,29 @@ public class AssignmentRepository : IAssignmentRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Assignment>> GetForCourseAsync(int courseId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Assignments
+            .AsNoTracking()
+            .Include(x => x.Course)
+            .Include(x => x.CreatedBy)
+            .Include(x => x.Submissions)
+            .Where(x => x.CourseId == courseId)
+            .OrderByDescending(x => x.DeadlineUtc)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Assignment>> GetPublishedForCourseAsync(int courseId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Assignments
+            .AsNoTracking()
+            .Include(x => x.Course)
+            .Include(x => x.CreatedBy)
+            .Where(x => x.CourseId == courseId && x.Status == AssignmentStatus.Published)
+            .OrderByDescending(x => x.DeadlineUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<bool> AnySubmittedAsync(int assignmentId, CancellationToken cancellationToken = default)
     {
         return await _context.Submissions

@@ -27,8 +27,32 @@ export interface CoursePayload {
     studentIds: number[];
 }
 
+export interface CoursePersonDto {
+    id: number;
+    name: string;
+    role: string;
+    email: string;
+}
+
+export interface CoursePeopleDto {
+    teachers: CoursePersonDto[];
+    students: CoursePersonDto[];
+}
+
 export function getCoursesRequest(): Promise<CourseDto[]> {
     return apiFetch<CourseDto[]>("/api/courses", { method: "GET" });
+}
+
+export function getCourseRequest(id: number): Promise<CourseDto> {
+    return apiFetch<CourseDto>(`/api/courses/${id}`, { method: "GET" });
+}
+
+export function getMyCoursesRequest(): Promise<CourseDto[]> {
+    return apiFetch<CourseDto[]>("/api/courses/my", { method: "GET" });
+}
+
+export function getCoursePeopleRequest(courseId: number): Promise<CoursePeopleDto> {
+    return apiFetch<CoursePeopleDto>(`/api/courses/${courseId}/people`, { method: "GET" });
 }
 
 export function createCourseRequest(payload: CoursePayload): Promise<CourseDto> {

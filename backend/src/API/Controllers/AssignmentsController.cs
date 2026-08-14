@@ -21,7 +21,14 @@ public class AssignmentsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<AssignmentDto>>> GetAll(CancellationToken cancellationToken)
     {
         var result = await _assignmentService.GetAllForCurrentUserAsync(cancellationToken);
+        return Ok(result);
+    }
 
+    // Phase 8: classwork for a course (role-aware).
+    [HttpGet("/api/courses/{courseId:int}/assignments")]
+    public async Task<ActionResult<IReadOnlyList<AssignmentDto>>> GetForCourse(int courseId, CancellationToken cancellationToken)
+    {
+        var result = await _assignmentService.GetForCourseAsync(courseId, cancellationToken);
         return Ok(result);
     }
 
@@ -29,7 +36,6 @@ public class AssignmentsController : ControllerBase
     public async Task<ActionResult<AssignmentDto>> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await _assignmentService.GetByIdAsync(id, cancellationToken);
-
         return Ok(result);
     }
 
@@ -38,7 +44,6 @@ public class AssignmentsController : ControllerBase
     public async Task<IActionResult> Create(CreateAssignmentDto dto, CancellationToken cancellationToken)
     {
         var id = await _assignmentService.CreateAsync(dto, cancellationToken);
-
         return Created($"/api/assignments/{id}", new { id });
     }
 
@@ -47,7 +52,6 @@ public class AssignmentsController : ControllerBase
     public async Task<IActionResult> Update(int id, UpdateAssignmentDto dto, CancellationToken cancellationToken)
     {
         await _assignmentService.UpdateAsync(id, dto, cancellationToken);
-
         return NoContent();
     }
 
@@ -56,7 +60,6 @@ public class AssignmentsController : ControllerBase
     public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
     {
         await _assignmentService.DeleteAsync(id, cancellationToken);
-
         return NoContent();
     }
 
@@ -65,7 +68,6 @@ public class AssignmentsController : ControllerBase
     public async Task<IActionResult> Publish(int id, CancellationToken cancellationToken)
     {
         await _assignmentService.PublishAsync(id, cancellationToken);
-
         return NoContent();
     }
 }

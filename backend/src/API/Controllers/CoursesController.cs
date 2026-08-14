@@ -24,10 +24,26 @@ public class CoursesController : ControllerBase
         return Ok(result);
     }
 
+    // Phase 8: courses for the signed-in user (student = enrolled, teacher = teaching, admin = all).
+    [HttpGet("my")]
+    public async Task<ActionResult<IReadOnlyList<CourseDto>>> GetMyCourses(CancellationToken cancellationToken)
+    {
+        var result = await _courseService.GetMyCoursesAsync(cancellationToken);
+        return Ok(result);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<CourseDto>> GetById(int id, CancellationToken cancellationToken)
     {
         var result = await _courseService.GetByIdAsync(id, cancellationToken);
+        return Ok(result);
+    }
+
+    // Phase 8: teachers + enrolled students for the People view.
+    [HttpGet("{id:int}/people")]
+    public async Task<ActionResult<CoursePeopleDto>> GetPeople(int id, CancellationToken cancellationToken)
+    {
+        var result = await _courseService.GetCoursePeopleAsync(id, cancellationToken);
         return Ok(result);
     }
 

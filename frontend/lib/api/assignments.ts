@@ -10,6 +10,8 @@ export interface AssignmentDto {
     session: string | null;
     title: string;
     description: string;
+    topic: string;
+    kind: string; // "Assignment" | "Material" | "Quiz"
     deadlineUtc: string;
     maxMarks: number;
     status: string;
@@ -17,12 +19,15 @@ export interface AssignmentDto {
     createdByName: string | null;
     createdAtUtc: string;
     submissionCount: number;
+    mySubmissionStatus: string | null; // "Assigned" | "Submitted" | "Graded" (students only)
 }
 
 export interface CreateAssignmentPayload {
     courseId: number;
     title: string;
     description: string;
+    topic?: string;
+    kind?: string;
     deadlineUtc: string;
     maxMarks: number;
 }
@@ -30,6 +35,8 @@ export interface CreateAssignmentPayload {
 export interface UpdateAssignmentPayload {
     title: string;
     description: string;
+    topic?: string;
+    kind?: string;
     deadlineUtc: string;
     maxMarks: number;
 }
@@ -40,6 +47,10 @@ export function getAssignmentsRequest(): Promise<AssignmentDto[]> {
 
 export function getAssignmentRequest(id: number): Promise<AssignmentDto> {
     return apiFetch<AssignmentDto>(`/api/assignments/${id}`, { method: "GET" });
+}
+
+export function getCourseAssignmentsRequest(courseId: number): Promise<AssignmentDto[]> {
+    return apiFetch<AssignmentDto[]>(`/api/courses/${courseId}/assignments`, { method: "GET" });
 }
 
 export function createAssignmentRequest(payload: CreateAssignmentPayload): Promise<{ id: number }> {

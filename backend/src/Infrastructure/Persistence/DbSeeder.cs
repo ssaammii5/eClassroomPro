@@ -145,6 +145,8 @@ public static class DbSeeder
         {
             Title = "Algebra Homework",
             Description = "Solve chapter 1 exercises.",
+            Topic = "Algebra",
+            Kind = AssignmentKind.Assignment,
             CourseId = course.Id,
             CreatedById = teacher.Id,
             DeadlineUtc = DateTime.UtcNow.AddDays(7),
