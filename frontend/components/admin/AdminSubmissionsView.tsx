@@ -174,27 +174,26 @@ export function AdminSubmissionsView() {
         {
             key: "studentName",
             header: "Student",
+            width: "18%",
             truncate: true,
-            render: (s: AdminSubmission) => (
-                <span className="text-sm font-medium text-[#1a73e8]">{s.studentName}</span>
-            ),
         },
         {
             key: "assignmentTitle",
             header: "Assignment",
+            width: "22%",
             truncate: true,
         },
         {
             key: "status",
             header: "Status",
-            width: "110px",
+            width: "10%",
             render: (s: AdminSubmission) => <StatusBadge status={s.status} />,
         },
         {
             key: "marks",
             header: "Marks",
             className: "text-center",
-            width: "90px",
+            width: "8%",
             render: (s: AdminSubmission) =>
                 s.marks !== null ? (
                     <span className="font-medium text-gray-900">{s.marks}</span>
@@ -205,13 +204,14 @@ export function AdminSubmissionsView() {
         {
             key: "submittedAt",
             header: "Submitted",
-            width: "120px",
+            width: "12%",
             render: (s: AdminSubmission) =>
                 s.submittedAt ? s.submittedAt : <span className="italic text-gray-400">Not yet</span>,
         },
         {
             key: "feedback",
             header: "Feedback",
+            width: "30%",
             truncate: true,
             render: (s: AdminSubmission) =>
                 s.feedback ? (
@@ -223,7 +223,6 @@ export function AdminSubmissionsView() {
     ];
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-            { }
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">All Submissions</h1>
@@ -232,7 +231,6 @@ export function AdminSubmissionsView() {
                     </p>
                 </div>
             </div>
-            { }
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -272,7 +270,6 @@ export function AdminSubmissionsView() {
                     )}
                 </div>
             </div>
-            { }
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
@@ -333,7 +330,6 @@ export function AdminSubmissionsView() {
                     </label>
                 </div>
             )}
-            { }
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
@@ -342,7 +338,6 @@ export function AdminSubmissionsView() {
                 )}
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
-                        { }
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6] sm:h-10 sm:w-10">
@@ -354,7 +349,6 @@ export function AdminSubmissionsView() {
                                 {pg.count} submission{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
-                        { }
                         {pg.departments.map((dept) => (
                             <div key={dept.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -368,7 +362,6 @@ export function AdminSubmissionsView() {
                                         {dept.count} submission{dept.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
-                                { }
                                 <div className="mt-4 space-y-6">
                                     {dept.sessions.map((sess) => (
                                         <div key={sess.session}>
@@ -381,7 +374,6 @@ export function AdminSubmissionsView() {
                                                     {sess.count} submission{sess.count === 1 ? "" : "s"}
                                                 </span>
                                             </div>
-                                            { }
                                             <div className="space-y-5">
                                                 {sess.courses.map((course) => (
                                                     <div key={course.courseName}>
@@ -400,6 +392,8 @@ export function AdminSubmissionsView() {
                                                             data={course.submissions}
                                                             keyExtractor={(s) => s.id}
                                                             emptyMessage="No submissions in this course."
+                                                            tableLayout="fixed"
+                                                            minWidthClassName="min-w-[760px]"
                                                             onRowClick={(s) => handleRowClick(s.id)}
                                                         />
                                                     </div>
