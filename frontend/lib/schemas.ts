@@ -1,9 +1,5 @@
 import { z } from "zod";
 
-/* ------------------------------------------------------------------ */
-/* Enums — mirror backend Domain/Enums                                 */
-/* ------------------------------------------------------------------ */
-
 export const RoleSchema = z.enum(["Admin", "Teacher", "Student"]);
 export type Role = z.infer<typeof RoleSchema>;
 
@@ -12,10 +8,6 @@ export type AssignmentStatus = z.infer<typeof AssignmentStatusSchema>;
 
 export const SubmissionStatusSchema = z.enum(["Draft", "Submitted", "Graded"]);
 export type SubmissionStatus = z.infer<typeof SubmissionStatusSchema>;
-
-/* ------------------------------------------------------------------ */
-/* API wire schemas — mirror backend DTOs exactly                      */
-/* ------------------------------------------------------------------ */
 
 export const CourseSchema = z.object({
     id: z.number().int(),
@@ -67,10 +59,6 @@ export const UserSchema = z.object({
 });
 export type User = z.infer<typeof UserSchema>;
 
-/* ------------------------------------------------------------------ */
-/* Class detail page (Stream / Classwork / People)                     */
-/* ------------------------------------------------------------------ */
-
 export const AttachmentSchema = z.object({
     id: z.number().int(),
     title: z.string(),
@@ -95,8 +83,9 @@ export const ClassworkEntrySchema = z.object({
     topic: z.string(),
     dueLabel: z.string(),
     postedLabel: z.string(),
-    status: z.enum(["Assigned", "Submitted", "Graded"]),
+    status: z.enum(["Assigned", "Submitted", "Graded", "Draft"]),
     description: z.string(),
+    kind: z.enum(["assignment", "material", "quiz"]).optional(),
 });
 export type ClassworkEntry = z.infer<typeof ClassworkEntrySchema>;
 
@@ -118,10 +107,6 @@ export const ClassDetailsSchema = z.object({
     people: z.array(ClassPersonSchema),
 });
 export type ClassDetails = z.infer<typeof ClassDetailsSchema>;
-
-/* ------------------------------------------------------------------ */
-/* Home page view models — derived from wire schemas                   */
-/* ------------------------------------------------------------------ */
 
 export const HomeClassSchema = CourseSchema.extend({
     headerColor: z.string(),
@@ -147,10 +132,6 @@ export const DueAssignmentSchema = z.object({
     dueTime: z.string(),
 });
 export type DueAssignment = z.infer<typeof DueAssignmentSchema>;
-
-/* ------------------------------------------------------------------ */
-/* Helpers                                                             */
-/* ------------------------------------------------------------------ */
 
 export function initialOf(name: string | null | undefined, fallback = "?") {
     const trimmed = name?.trim();

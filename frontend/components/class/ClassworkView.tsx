@@ -25,11 +25,13 @@ export function ClassworkView({ items, courseId }: ClassworkViewProps) {
     const [collapsedTopics, setCollapsedTopics] = useState<ReadonlySet<string>>(new Set());
     const [expandedItems, setExpandedItems] = useState<ReadonlySet<number>>(new Set());
 
-    const topics = useMemo(() => Array.from(new Set(items.map((i) => i.topic))), [items]);
+    // Students never see draft items created by teachers.
+    const published = useMemo(() => items.filter((i) => i.status !== "Draft"), [items]);
 
+    const topics = useMemo(() => Array.from(new Set(published.map((i) => i.topic))), [published]);
     const visibleGroups = topics
         .filter((t) => topicFilter === "all" || t === topicFilter)
-        .map((topic) => ({ topic, entries: items.filter((i) => i.topic === topic) }));
+        .map((topic) => ({ topic, entries: published.filter((i) => i.topic === topic) }));
 
     const allCollapsed =
         visibleGroups.length > 0 && visibleGroups.every((g) => collapsedTopics.has(g.topic));
@@ -78,7 +80,6 @@ export function ClassworkView({ items, courseId }: ClassworkViewProps) {
                         <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-800" />
                     </div>
                 </fieldset>
-
                 <div className="flex items-center gap-6">
                     <button
                         type="button"
@@ -99,7 +100,7 @@ export function ClassworkView({ items, courseId }: ClassworkViewProps) {
                 </div>
             </div>
 
-            {/* Topic groups */}
+            {/* Topics */}
             {visibleGroups.length === 0 && (
                 <p className="py-16 text-center text-sm text-gray-600">No classwork posted yet.</p>
             )}

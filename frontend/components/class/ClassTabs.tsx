@@ -6,18 +6,22 @@ export const CLASS_TABS = [
     { id: "people", label: "People" },
 ] as const;
 
-export type ClassTab = (typeof CLASS_TABS)[number]["id"];
+export type ClassTab = "stream" | "classwork" | "people" | "grades";
 
 interface ClassTabsProps {
     tab: ClassTab;
     onTabChange: (tab: ClassTab) => void;
+    isTeacher?: boolean;
 }
 
-export function ClassTabs({ tab, onTabChange }: ClassTabsProps) {
+export function ClassTabs({ tab, onTabChange, isTeacher = false }: ClassTabsProps) {
+    const tabs: { id: ClassTab; label: string }[] = isTeacher
+        ? [...CLASS_TABS, { id: "grades", label: "Grades" }]
+        : [...CLASS_TABS];
     return (
         <div className="sticky top-16 z-30 border-b border-gray-200 bg-white">
             <nav className="flex gap-8 px-4 sm:gap-12 sm:px-8">
-                {CLASS_TABS.map((t) => (
+                {tabs.map((t) => (
                     <button
                         key={t.id}
                         type="button"
