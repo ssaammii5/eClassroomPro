@@ -12,23 +12,23 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWor
     }
 
     public DbSet<User> Users => Set<User>();
-
     public DbSet<Course> Courses => Set<Course>();
-
+    public DbSet<CourseTeacher> CourseTeachers => Set<CourseTeacher>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
-
     public DbSet<Assignment> Assignments => Set<Assignment>();
-
     public DbSet<Submission> Submissions => Set<Submission>();
-
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
-
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<AcademicProgram> AcademicPrograms => Set<AcademicProgram>();
+    public DbSet<AcademicDepartment> AcademicDepartments => Set<AcademicDepartment>();
+    public DbSet<AcademicSemester> AcademicSemesters => Set<AcademicSemester>();
+
+    public DbSet<StudentDetails> StudentDetails => Set<StudentDetails>();
+    public DbSet<TeacherDetails> TeacherDetails => Set<TeacherDetails>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 

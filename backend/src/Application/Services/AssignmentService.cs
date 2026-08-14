@@ -118,10 +118,16 @@ public class AssignmentService
         var course = await _courseRepository.GetByIdAsync(dto.CourseId, cancellationToken)
             ?? throw new NotFoundException("Course not found.");
 
-        if (_currentUserService.IsTeacher && course.TeacherId != _currentUserService.UserId)
-        {
-            throw new ForbiddenAccessException("You can create assignments only for courses assigned to you.");
-        }
+        if (_currentUserService.IsTeacher)
+{
+    var isTeacherOfCourse = course.TeacherId == _currentUserService.UserId
+        || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
+
+    if (!isTeacherOfCourse)
+    {
+        throw new ForbiddenAccessException("You can create assignments only for courses assigned to you.");
+    }
+}
 
         var assignment = new Assignment
         {
@@ -224,25 +230,26 @@ public class AssignmentService
     }
 
     private void EnsureCanManageAssignment(Assignment assignment)
+{
+    if (_currentUserService.IsAdmin)
     {
-        if (_currentUserService.IsAdmin)
-        {
-            return;
-        }
-
-        if (!_currentUserService.IsTeacher)
-        {
-            throw new ForbiddenAccessException("Only teachers or admins can manage assignments.");
-        }
-
-        var isCreator = assignment.CreatedById == _currentUserService.UserId;
-        var isCourseTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
-
-        if (!isCreator && !isCourseTeacher)
-        {
-            throw new ForbiddenAccessException("You do not have permission to manage this assignment.");
-        }
+        return;
     }
+
+    if (!_currentUserService.IsTeacher)
+    {
+        throw new ForbiddenAccessException("Only teachers or admins can manage assignments.");
+    }
+
+    var isCreator = assignment.CreatedById == _currentUserService.UserId;
+    var isPrimaryTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
+    var isCourseTeacher = assignment.Course?.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId) ?? false;
+
+    if (!isCreator && !isPrimaryTeacher && !isCourseTeacher)
+    {
+        throw new ForbiddenAccessException("You do not have permission to manage this assignment.");
+    }
+}
 
     private static AssignmentDto ToDto(Assignment assignment)
     {

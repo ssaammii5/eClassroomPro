@@ -17,6 +17,8 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .AsNoTracking()
+            .Include(x => x.StudentDetails)
+            .Include(x => x.TeacherDetails)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
@@ -26,6 +28,8 @@ public class UserRepository : IUserRepository
 
         return await _context.Users
             .AsNoTracking()
+            .Include(x => x.StudentDetails)
+            .Include(x => x.TeacherDetails)
             .FirstOrDefaultAsync(x => x.Email.ToLower() == normalizedEmail, cancellationToken);
     }
 
@@ -33,6 +37,8 @@ public class UserRepository : IUserRepository
     {
         return await _context.Users
             .AsNoTracking()
+            .Include(x => x.StudentDetails)
+            .Include(x => x.TeacherDetails)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
     }
@@ -59,5 +65,37 @@ public class UserRepository : IUserRepository
     public void Remove(User user)
     {
         _context.Users.Remove(user);
+    }
+
+    public async Task<StudentDetails?> GetStudentDetailsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.StudentDetails
+            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+    }
+
+    public async Task<TeacherDetails?> GetTeacherDetailsByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        return await _context.TeacherDetails
+            .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+    }
+
+    public async Task AddStudentDetailsAsync(StudentDetails details, CancellationToken cancellationToken = default)
+    {
+        await _context.StudentDetails.AddAsync(details, cancellationToken);
+    }
+
+    public async Task AddTeacherDetailsAsync(TeacherDetails details, CancellationToken cancellationToken = default)
+    {
+        await _context.TeacherDetails.AddAsync(details, cancellationToken);
+    }
+
+    public void RemoveStudentDetails(StudentDetails details)
+    {
+        _context.StudentDetails.Remove(details);
+    }
+
+    public void RemoveTeacherDetails(TeacherDetails details)
+    {
+        _context.TeacherDetails.Remove(details);
     }
 }

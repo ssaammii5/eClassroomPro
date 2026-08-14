@@ -1,5 +1,4 @@
 // lib/currentUser.ts
-
 export const ROLE_STYLES: Record<"Admin" | "Teacher" | "Student", string> = {
     Admin: "bg-[#fce8e6] text-[#c5221f]",
     Teacher: "bg-[#fef7e0] text-[#b06000]",
@@ -13,8 +12,32 @@ export interface CurrentUser {
     avatarClass: string;
 }
 
-// ─── CHANGE THIS ROLE TO SWITCH DEMO USER ───
-// Use "Admin" | "Teacher" | "Student"
+/** Normalize the role string coming from the API. */
+export function mapRole(role: string): CurrentUser["role"] {
+    if (role === "Admin" || role === "Teacher" || role === "Student") {
+        return role;
+    }
+    return "Student";
+}
+
+/** Derive the avatar background from the role (matches the mock styling). */
+export function avatarClassFor(role: string): string {
+    switch (role) {
+        case "Admin":
+            return "bg-[#c5221f]";
+        case "Teacher":
+            return "bg-amber-800";
+        case "Student":
+            return "bg-purple-800";
+        default:
+            return "bg-gray-600";
+    }
+}
+
+/**
+ * Fallback user only. The real signed-in user is provided by AuthProvider /
+ * useAuth(). A few components still reference this as a prop default.
+ */
 export const currentUser: CurrentUser = {
     name: "Admin User",
     email: "admin@eclassroompro.com",

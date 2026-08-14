@@ -1,6 +1,10 @@
+"use client";
+
 import { SettingsView } from "@/components/settings/SettingsView";
-import { currentUser } from "@/lib/currentUser";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 export default function SettingsPage() {
-    return <SettingsView userName={currentUser.name} role={currentUser.role} />;
+    const { user } = useAuth();
+
+    return <SettingsView userName={user?.name} role={user?.role} />;
 }

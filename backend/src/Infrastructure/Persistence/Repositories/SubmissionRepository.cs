@@ -28,6 +28,8 @@ public class SubmissionRepository : ISubmissionRepository
             .AsNoTracking()
             .Include(x => x.Assignment!)
                 .ThenInclude(x => x.Course)
+            .Include(x => x.Assignment!)
+                .ThenInclude(x => x.Course!.CourseTeachers)
             .Include(x => x.Student)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }

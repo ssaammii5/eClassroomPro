@@ -18,6 +18,21 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
             .HasMaxLength(200)
             .IsRequired();
 
+        builder.Property(x => x.Program)
+            .HasMaxLength(200)
+            .IsRequired();
+
+        builder.Property(x => x.Department)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(x => x.Session)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(x => x.IsActive)
+            .HasDefaultValue(true);
+
         builder.HasOne(x => x.Teacher)
             .WithMany(x => x.TaughtCourses)
             .HasForeignKey(x => x.TeacherId)

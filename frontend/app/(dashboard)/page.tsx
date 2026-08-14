@@ -1,11 +1,13 @@
-// app/(dashboard)/page.tsx
-import { currentUser } from "@/lib/currentUser";
+"use client";
+
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { AdminDashboardView } from "@/components/admin/AdminDashboardView";
 import { ClassesSection } from "@/components/home/ClassesSection";
 import { DueSoonCard } from "@/components/home/DueSoonCard";
 
 export default function DashboardHomePage() {
-    const isAdmin = currentUser.role === "Admin";
+    const { user } = useAuth();
+    const isAdmin = user?.role === "Admin";
 
     if (isAdmin) {
         return <AdminDashboardView />;

@@ -13,11 +13,22 @@ public class CourseRepository : ICourseRepository
         _context = context;
     }
 
+    // Tracked on purpose so UpdateAsync/DeleteAsync can mutate navigations.
     public async Task<Course?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Courses
+            .Include(x => x.Teacher)
+            .Include(x => x.CourseTeachers).ThenInclude(x => x.Teacher)
+            .Include(x => x.Enrollments)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
+    public async Task<Course?> GetByIdWithDetailsAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Courses
             .AsNoTracking()
             .Include(x => x.Teacher)
+            .Include(x => x.CourseTeachers).ThenInclude(x => x.Teacher)
             .Include(x => x.Enrollments)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
@@ -27,6 +38,7 @@ public class CourseRepository : ICourseRepository
         return await _context.Courses
             .AsNoTracking()
             .Include(x => x.Teacher)
+            .Include(x => x.CourseTeachers).ThenInclude(x => x.Teacher)
             .Include(x => x.Enrollments)
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);

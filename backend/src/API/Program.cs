@@ -38,9 +38,11 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<CourseService>();
+builder.Services.AddScoped<AcademicsService>();
 builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddScoped<AppSettingService>();
+builder.Services.AddScoped<DashboardService>();
 
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
@@ -66,7 +68,6 @@ builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
     options.AddPolicy("authentication", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
@@ -83,21 +84,16 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
-
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidIssuer = jwtSettings.Issuer,
-
             ValidateAudience = true,
             ValidAudience = jwtSettings.Audience,
-
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret)),
-
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
-
             RoleClaimType = "role",
             NameClaimType = "name"
         };
@@ -117,7 +113,6 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -174,7 +169,6 @@ app.UseSwaggerUI();
 
 app.UseCors("Frontend");
 app.UseRateLimiter();
-
 app.UseAuthentication();
 app.UseAuthorization();
 

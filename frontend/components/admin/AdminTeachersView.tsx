@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import {
     BookOpen,
@@ -11,11 +12,18 @@ import {
     X,
 } from "lucide-react";
 import type { AdminUser, TeacherDesignation } from "@/lib/adminData";
-import { adminUsers } from "@/lib/adminData";
+import {
+    createUserRequest,
+    deleteUserRequest,
+    getUsersRequest,
+    updateUserRequest,
+    type UserDto,
+} from "@/lib/api/users";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { TeacherFormModal } from "./TeacherFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+
 const DESIGNATION_ORDER: TeacherDesignation[] = [
     "Professor",
     "Associate Professor",
@@ -23,27 +31,51 @@ const DESIGNATION_ORDER: TeacherDesignation[] = [
     "Senior Lecturer",
     "Lecturer",
 ];
+
 const DESIGNATION_RANK: Record<string, number> = Object.fromEntries(
     DESIGNATION_ORDER.map((d, i) => [d, i])
 );
+
+function mapUserDtoToAdminUser(dto: UserDto): AdminUser {
+    return {
+        id: dto.id,
+        name: dto.name,
+        email: dto.email,
+        role: dto.role as AdminUser["role"],
+        isActive: dto.isActive,
+        createdAt: dto.createdAtUtc.split("T")[0],
+        teacherDetails: dto.teacherDetails
+            ? {
+                teacherId: dto.teacherDetails.teacherId ?? "",
+                designation: (dto.teacherDetails.designation ?? "Assistant Professor") as TeacherDesignation,
+                department: dto.teacherDetails.department ?? "",
+            }
+            : undefined,
+        studentDetails: undefined,
+    };
+}
+
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.teacherDetails;
     return !!d && !!d.designation && !!d.department?.trim();
 }
+
 interface DesignationGroup {
     name: string;
     teachers: AdminUser[];
     count: number;
 }
+
 interface DeptGroup {
     name: string;
     designations: DesignationGroup[];
     count: number;
 }
+
 export function AdminTeachersView() {
-    const [users, setUsers] = useState<AdminUser[]>(
-        adminUsers.filter((u) => u.role === "Teacher")
-    );
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [departmentFilter, setDepartmentFilter] = useState("all");
@@ -53,16 +85,36 @@ export function AdminTeachersView() {
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    const loadUsers = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const all = await getUsersRequest();
+            setUsers(all.filter((u) => u.role === "Teacher").map(mapUserDtoToAdminUser));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load teachers.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        void loadUsers();
+    }, []);
+
     const departmentOptions = useMemo(() => {
         return Array.from(
             new Set(users.map((u) => u.teacherDetails?.department?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => a.localeCompare(b));
     }, [users]);
+
     const designationOptions = useMemo<TeacherDesignation[]>(() => {
         const base =
             departmentFilter === "all"
                 ? users
                 : users.filter((u) => u.teacherDetails?.department?.trim() === departmentFilter);
+
         return Array.from(
             new Set(
                 base
@@ -75,11 +127,13 @@ export function AdminTeachersView() {
             return ia - ib || a.localeCompare(b);
         });
     }, [users, departmentFilter]);
+
     useEffect(() => {
         if (designationFilter !== "all" && !designationOptions.includes(designationFilter as TeacherDesignation)) {
             setDesignationFilter("all");
         }
     }, [designationOptions, designationFilter]);
+
     const filtered = useMemo(() => {
         return users.filter((u) => {
             const d = u.teacherDetails;
@@ -94,29 +148,37 @@ export function AdminTeachersView() {
                 departmentFilter === "all" || (d?.department?.trim() ?? "") === departmentFilter;
             const matchDesignation =
                 designationFilter === "all" || d?.designation === designationFilter;
+
             return matchSearch && matchStatus && matchDept && matchDesignation;
         });
     }, [users, search, statusFilter, departmentFilter, designationFilter]);
+
     const activeFilterCount = [departmentFilter, designationFilter, statusFilter].filter(
         (f) => f !== "all"
     ).length;
+
     const clearFilters = () => {
         setDepartmentFilter("all");
         setDesignationFilter("all");
         setStatusFilter("all");
     };
+
     const departmentGroups = useMemo<DeptGroup[]>(() => {
         const map = new Map<string, Map<string, AdminUser[]>>();
+
         for (const u of filtered) {
             if (!hasFullDetails(u)) continue;
             const d = u.teacherDetails!;
             const dept = d.department.trim();
+
             if (!map.has(dept)) map.set(dept, new Map());
             const desgMap = map.get(dept)!;
             if (!desgMap.has(d.designation)) desgMap.set(d.designation, []);
             desgMap.get(d.designation)!.push(u);
         }
+
         const departments = Array.from(map.keys()).sort((a, b) => a.localeCompare(b));
+
         return departments.map((deptName) => {
             const desgMap = map.get(deptName)!;
             const designations: DesignationGroup[] = Array.from(desgMap.keys())
@@ -131,6 +193,7 @@ export function AdminTeachersView() {
                     );
                     return { name: designation, teachers, count: teachers.length };
                 });
+
             return {
                 name: deptName,
                 designations,
@@ -138,6 +201,7 @@ export function AdminTeachersView() {
             };
         });
     }, [filtered]);
+
     const uncategorized = useMemo(
         () =>
             filtered
@@ -145,31 +209,60 @@ export function AdminTeachersView() {
                 .sort((a, b) => a.name.localeCompare(b.name)),
         [filtered]
     );
-    const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
-        if (editingUser) {
-            setUsers((prev) =>
-                prev.map((u) => (u.id === editingUser.id ? { ...u, ...data } : u))
-            );
-        } else {
-            const newUser: AdminUser = {
-                ...data,
-                role: "Teacher",
-                id: Math.max(0, ...users.map((u) => u.id)) + 1,
-                createdAt: new Date().toISOString().split("T")[0],
-            };
-            setUsers((prev) => [...prev, newUser]);
-            setSuccessMessage(`Teacher "${data.name}" created successfully. A password setup link has been sent to ${data.email}.`);
-            window.setTimeout(() => setSuccessMessage(null), 6000);
+
+    const handleSave = async (data: Omit<AdminUser, "id" | "createdAt">) => {
+        try {
+            const teacherDetails = data.teacherDetails
+                ? {
+                    teacherId: data.teacherDetails.teacherId,
+                    designation: data.teacherDetails.designation,
+                    department: data.teacherDetails.department,
+                }
+                : undefined;
+
+            if (editingUser) {
+                await updateUserRequest(editingUser.id, {
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    isActive: data.isActive,
+                    teacherDetails,
+                });
+            } else {
+                const password = `Teacher@${Date.now().toString(36)}`;
+                await createUserRequest({
+                    name: data.name,
+                    email: data.email,
+                    password,
+                    role: data.role,
+                    teacherDetails,
+                });
+                setSuccessMessage(
+                    `Teacher "${data.name}" created successfully. A password setup link has been sent to ${data.email}.`
+                );
+                window.setTimeout(() => setSuccessMessage(null), 6000);
+            }
+
+            setModalOpen(false);
+            setEditingUser(null);
+            await loadUsers();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save teacher.");
         }
-        setModalOpen(false);
-        setEditingUser(null);
     };
-    const handleDelete = () => {
-        if (deleteTarget) {
-            setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        try {
+            await deleteUserRequest(deleteTarget.id);
+            setDeleteTarget(null);
+            await loadUsers();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete teacher.");
             setDeleteTarget(null);
         }
     };
+
     const columns = [
         {
             key: "name",
@@ -244,6 +337,15 @@ export function AdminTeachersView() {
             ),
         },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
+
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
             {/* Success Banner */}
@@ -262,6 +364,14 @@ export function AdminTeachersView() {
                     </div>
                 </div>
             )}
+
+            {/* Error Banner */}
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">
+                    {error}
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -279,6 +389,7 @@ export function AdminTeachersView() {
                     Add Teacher
                 </button>
             </div>
+
             {/* Search and Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
@@ -319,6 +430,7 @@ export function AdminTeachersView() {
                     )}
                 </div>
             </div>
+
             {/* Advanced Filters Panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -362,6 +474,7 @@ export function AdminTeachersView() {
                     </label>
                 </div>
             )}
+
             {/* Teacher Groups */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
@@ -369,6 +482,7 @@ export function AdminTeachersView() {
                         <p className="text-sm text-gray-600">No teachers match your filters.</p>
                     </div>
                 )}
+
                 {/* Department Groups */}
                 {departmentGroups.map((dept) => (
                     <section key={dept.name}>
@@ -384,6 +498,7 @@ export function AdminTeachersView() {
                                 {dept.count} teacher{dept.count === 1 ? "" : "s"}
                             </span>
                         </div>
+
                         {/* Designation Groups */}
                         {dept.designations.map((desg) => (
                             <div key={desg.name} className="mt-6">
@@ -407,6 +522,7 @@ export function AdminTeachersView() {
                         ))}
                     </section>
                 ))}
+
                 {/* Uncategorized */}
                 {uncategorized.length > 0 && (
                     <section>
@@ -432,6 +548,7 @@ export function AdminTeachersView() {
                     </section>
                 )}
             </div>
+
             {/* Modals */}
             <TeacherFormModal
                 open={modalOpen}
@@ -439,6 +556,7 @@ export function AdminTeachersView() {
                 onSave={handleSave}
                 onClose={() => { setModalOpen(false); setEditingUser(null); }}
             />
+
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="Delete Teacher"

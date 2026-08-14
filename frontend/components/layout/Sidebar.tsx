@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { sidebarClasses } from "@/lib/mock-data";
-import { currentUser } from "@/lib/currentUser";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 const DESKTOP_QUERY = "(min-width: 1024px)";
 
@@ -35,7 +35,8 @@ export function Sidebar({ open, mobileReady = true, onExpand, onClose }: Sidebar
     const [enrolledOpen, setEnrolledOpen] = useState(true);
     const pathname = usePathname();
     const prevPathname = useRef(pathname);
-    const isAdmin = currentUser.role === "Admin";
+    const { user } = useAuth();
+    const isAdmin = user?.role === "Admin";
 
     useEffect(() => {
         if (prevPathname.current === pathname) return;

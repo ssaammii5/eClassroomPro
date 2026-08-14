@@ -208,6 +208,95 @@ namespace eClassroomPro.Infrastructure.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.StudentDetails", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CurrentProgram")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DateOfBirth")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FathersName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("MothersName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Nationality")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("RegNo")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SemesterSession")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Session")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Street")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("StudentId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Zip")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("StudentDetails");
+                });
+
             modelBuilder.Entity("eClassroomPro.Domain.Entities.Submission", b =>
                 {
                     b.Property<int>("Id")
@@ -253,6 +342,43 @@ namespace eClassroomPro.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Submissions");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.TeacherDetails", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Department")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Designation")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("TeacherId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("TeacherDetails");
                 });
 
             modelBuilder.Entity("eClassroomPro.Domain.Entities.User", b =>
@@ -356,6 +482,17 @@ namespace eClassroomPro.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.StudentDetails", b =>
+                {
+                    b.HasOne("eClassroomPro.Domain.Entities.User", "User")
+                        .WithOne("StudentDetails")
+                        .HasForeignKey("eClassroomPro.Domain.Entities.StudentDetails", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("eClassroomPro.Domain.Entities.Submission", b =>
                 {
                     b.HasOne("eClassroomPro.Domain.Entities.Assignment", "Assignment")
@@ -373,6 +510,17 @@ namespace eClassroomPro.Infrastructure.Migrations
                     b.Navigation("Assignment");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.TeacherDetails", b =>
+                {
+                    b.HasOne("eClassroomPro.Domain.Entities.User", "User")
+                        .WithOne("TeacherDetails")
+                        .HasForeignKey("eClassroomPro.Domain.Entities.TeacherDetails", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("eClassroomPro.Domain.Entities.Assignment", b =>
@@ -393,9 +541,13 @@ namespace eClassroomPro.Infrastructure.Migrations
 
                     b.Navigation("Enrollments");
 
+                    b.Navigation("StudentDetails");
+
                     b.Navigation("Submissions");
 
                     b.Navigation("TaughtCourses");
+
+                    b.Navigation("TeacherDetails");
                 });
 #pragma warning restore 612, 618
         }

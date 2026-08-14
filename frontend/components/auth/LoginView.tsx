@@ -5,14 +5,17 @@ import type { FormEvent } from "react";
 import { GraduationCap, Loader2, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 export function LoginView() {
     const router = useRouter();
+    const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [remember, setRemember] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [formError, setFormError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
     const clearError = (key: string) =>
@@ -32,17 +35,25 @@ export function LoginView() {
         return next;
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         const next = validate();
         setErrors(next);
         if (Object.keys(next).length > 0) return;
 
         setLoading(true);
-        // Mock auth — replace with a real call to the backend AuthController later.
-        window.setTimeout(() => {
+        setFormError(null);
+        try {
+            await login(email.trim(), password);
             router.push("/");
-        }, 900);
+        } catch (err) {
+            setFormError(
+                err instanceof Error && err.message
+                    ? err.message
+                    : "Sign in failed. Please try again.",
+            );
+            setLoading(false);
+        }
     };
 
     return (
@@ -66,7 +77,6 @@ export function LoginView() {
                     aria-hidden
                     className="pointer-events-none absolute -bottom-20 left-[42%] h-56 w-56 rounded-full bg-[radial-gradient(circle_at_32%_30%,#7db2ff,#0a3d8f_72%)]"
                 />
-
                 <div className="relative">
                     {/* Logo */}
                     <div className="flex items-center gap-3">
@@ -75,7 +85,6 @@ export function LoginView() {
                         </span>
                         <span className="text-xl font-medium">eClassroomPro</span>
                     </div>
-
                     <h1 className="mt-10 text-4xl font-bold tracking-[0.06em] sm:text-5xl">WELCOME</h1>
                     <p className="mt-4 text-sm font-semibold uppercase tracking-[0.28em] text-white/90">
                         One classroom for every role
@@ -95,7 +104,6 @@ export function LoginView() {
                     aria-hidden
                     className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle_at_35%_30%,#7db2ff,#0a3d8f_72%)]"
                 />
-
                 <div className="relative mx-auto w-full max-w-md">
                     <h2 className="text-3xl font-semibold text-gray-900">Sign in</h2>
                     <p className="mt-2 text-sm text-gray-600">to continue to eClassroomPro</p>
@@ -155,6 +163,13 @@ export function LoginView() {
                                 <span className="mt-1 block text-sm text-[#c5221f]">{errors.password}</span>
                             )}
                         </div>
+
+                        {/* Form-level error (real auth) */}
+                        {formError && (
+                            <p className="rounded-md bg-[#fce8e6] px-4 py-2.5 text-sm text-[#c5221f]">
+                                {formError}
+                            </p>
+                        )}
 
                         {/* Remember / forgot */}
                         <div className="flex items-center justify-between">

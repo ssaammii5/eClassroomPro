@@ -46,15 +46,88 @@ public static class DbSeeder
         context.Users.AddRange(admin, teacher, student);
         await context.SaveChangesAsync();
 
+        var teacherDetails = new TeacherDetails
+        {
+            UserId = teacher.Id,
+            TeacherId = "FAC-1001",
+            Designation = "Assistant Professor",
+            Department = "Mathematics"
+        };
+
+        var studentDetails = new StudentDetails
+        {
+            UserId = student.Id,
+            StudentId = "201-15-1001",
+            RegNo = "1234567890",
+            Department = "Mathematics",
+            CurrentProgram = "Undergraduate",
+            Session = "2021-2022",
+            SemesterSession = "January-June/2022"
+        };
+
+        context.TeacherDetails.Add(teacherDetails);
+        context.StudentDetails.Add(studentDetails);
+        await context.SaveChangesAsync();
+
+        // Academic reference data
+        var programs = new[]
+        {
+            new AcademicProgram { Name = "Undergraduate", Description = "Bachelor's degree programs (4 years)" },
+            new AcademicProgram { Name = "Postgraduate", Description = "Master's degree programs (2 years)" },
+            new AcademicProgram { Name = "Post Graduate Diploma", Description = "Postgraduate diploma programs (1 year)" },
+            new AcademicProgram { Name = "M.Phil", Description = "Master of Philosophy research program" },
+            new AcademicProgram { Name = "PhD", Description = "Doctoral research program" }
+        };
+
+        var departments = new[]
+        {
+            new AcademicDepartment { Name = "Computer Science and Engineering", Code = "CSE" },
+            new AcademicDepartment { Name = "Electrical and Electronic Engineering", Code = "EEE" },
+            new AcademicDepartment { Name = "Business Administration", Code = "BBA" },
+            new AcademicDepartment { Name = "English", Code = "ENG" },
+            new AcademicDepartment { Name = "Economics", Code = "ECO" },
+            new AcademicDepartment { Name = "Law", Code = "LAW" },
+            new AcademicDepartment { Name = "Mathematics", Code = "MTH" },
+            new AcademicDepartment { Name = "Physics", Code = "PHY" },
+            new AcademicDepartment { Name = "Chemistry", Code = "CHM" }
+        };
+
+        var semesters = new[]
+        {
+            new AcademicSemester { Name = "January-June/2023" },
+            new AcademicSemester { Name = "July-December/2023" },
+            new AcademicSemester { Name = "January-June/2024" },
+            new AcademicSemester { Name = "July-December/2024" },
+            new AcademicSemester { Name = "January-June/2025" },
+            new AcademicSemester { Name = "July-December/2025" },
+            new AcademicSemester { Name = "January-June/2026" },
+            new AcademicSemester { Name = "July-December/2026" }
+        };
+
+        context.AcademicPrograms.AddRange(programs);
+        context.AcademicDepartments.AddRange(departments);
+        context.AcademicSemesters.AddRange(semesters);
+        await context.SaveChangesAsync();
+
         var course = new Course
         {
             Name = "Class 10",
             Subject = "Mathematics",
+            Program = "Undergraduate",
+            Department = "MTH",
+            Session = "January-June/2022",
+            IsActive = true,
             TeacherId = teacher.Id
         };
 
         context.Courses.Add(course);
         await context.SaveChangesAsync();
+
+        context.CourseTeachers.Add(new CourseTeacher
+        {
+            CourseId = course.Id,
+            TeacherId = teacher.Id
+        });
 
         var enrollment = new Enrollment
         {
@@ -90,20 +163,10 @@ public static class DbSeeder
 
         context.Submissions.Add(submission);
 
-        var schoolNameSetting = new AppSetting
-        {
-            Key = "SchoolName",
-            Value = "eClassroomPro School"
-        };
-
-        var lateSubmissionSetting = new AppSetting
-        {
-            Key = "AllowLateSubmissions",
-            Value = "false"
-        };
+        var schoolNameSetting = new AppSetting { Key = "SchoolName", Value = "eClassroomPro School" };
+        var lateSubmissionSetting = new AppSetting { Key = "AllowLateSubmissions", Value = "false" };
 
         context.AppSettings.AddRange(schoolNameSetting, lateSubmissionSetting);
-
         await context.SaveChangesAsync();
     }
 }

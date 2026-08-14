@@ -18,7 +18,8 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IconButton } from "@/components/ui/IconButton";
-import { currentUser, ROLE_STYLES } from "@/lib/currentUser";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { ROLE_STYLES } from "@/lib/currentUser";
 import { homeClasses, sidebarClasses } from "@/lib/mock-data";
 import { initialOf } from "@/lib/schemas";
 
@@ -53,6 +54,7 @@ const INITIAL_NOTIFICATIONS: NotificationItem[] = [
 export function TopBar({ onMenuClick }: TopBarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const { user, logout } = useAuth();
     const [accountOpen, setAccountOpen] = useState(false);
     const [notifOpen, setNotifOpen] = useState(false);
     const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
@@ -80,6 +82,17 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
     const toggleAccount = () => { setNotifOpen(false); setAccountOpen((v) => !v); };
     const toggleNotif = () => { setAccountOpen(false); setNotifOpen((v) => !v); };
+
+    const handleLogout = async () => {
+        setAccountOpen(false);
+        await logout();
+        router.push("/login");
+    };
+
+    const displayName = user?.name ?? "";
+    const displayEmail = user?.email ?? "";
+    const displayRole = user?.role ?? "Student";
+    const avatarClass = user?.avatarClass ?? "bg-gray-600";
 
     return (
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between bg-white px-3 sm:px-4">
@@ -117,21 +130,18 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                         <span className="truncate text-[15px] font-medium text-gray-800">To-do</span>
                     </span>
                 )}
-
                 {isCalendar && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
                         <span className="truncate text-[15px] font-medium text-gray-800">Calendar</span>
                     </span>
                 )}
-
                 {isSettings && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
                         <span className="truncate text-[15px] font-medium text-gray-800">Settings</span>
                     </span>
                 )}
-
                 {isAdminPage && (
                     <span className="flex min-w-0 items-center">
                         <ChevronRight className="mx-1 h-5 w-5 shrink-0 text-gray-500" />
@@ -223,16 +233,16 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                         type="button"
                         aria-label="Account"
                         onClick={toggleAccount}
-                        className={`relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-sm font-medium text-white ring-2 ring-transparent transition-shadow hover:ring-gray-400/60 ${currentUser.avatarClass}`}
+                        className={`relative z-50 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-sm font-medium text-white ring-2 ring-transparent transition-shadow hover:ring-gray-400/60 ${avatarClass}`}
                     >
-                        {initialOf(currentUser.name)}
+                        {initialOf(displayName)}
                     </button>
                     {accountOpen && (
                         <>
                             <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
                             <div className="absolute right-0 top-full z-50 mt-3 w-[340px] rounded-2xl bg-[#e9eef4] p-5 shadow-xl">
                                 <div className="relative text-center">
-                                    <p className="truncate text-sm text-gray-800">{currentUser.email}</p>
+                                    <p className="truncate text-sm text-gray-800">{displayEmail}</p>
                                     <button
                                         type="button"
                                         aria-label="Close"
@@ -243,16 +253,16 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </button>
                                 </div>
                                 <div className="mt-5 flex justify-center">
-                                    <span className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl text-white ${currentUser.avatarClass}`}>
-                                        {initialOf(currentUser.name)}
+                                    <span className={`flex h-20 w-20 items-center justify-center rounded-full text-4xl text-white ${avatarClass}`}>
+                                        {initialOf(displayName)}
                                     </span>
                                 </div>
-                                <p title={currentUser.name} className="mt-4 truncate px-2 text-center text-xl text-gray-900">
-                                    {currentUser.name}
+                                <p title={displayName} className="mt-4 truncate px-2 text-center text-xl text-gray-900">
+                                    {displayName}
                                 </p>
                                 <div className="mt-2 flex justify-center">
-                                    <span className={`rounded-full px-3.5 py-1 text-xs font-medium ${ROLE_STYLES[currentUser.role]}`}>
-                                        {currentUser.role}
+                                    <span className={`rounded-full px-3.5 py-1 text-xs font-medium ${ROLE_STYLES[displayRole]}`}>
+                                        {displayRole}
                                     </span>
                                 </div>
                                 <div className="mt-5 grid grid-cols-2 gap-3">
@@ -266,7 +276,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setAccountOpen(false)}
+                                        onClick={handleLogout}
                                         className="flex cursor-pointer items-center justify-center gap-2 rounded-full bg-[#c5221f] py-2.5 text-sm font-medium text-white hover:bg-[#a31815]"
                                     >
                                         <LogOut className="h-4 w-4" />

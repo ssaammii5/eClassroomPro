@@ -1,14 +1,9 @@
 "use client";
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import type { AdminCourse, AdminUser } from "@/lib/adminData";
-import {
-    adminUsers,
-    COURSE_CATALOG,
-    AVAILABLE_SESSIONS,
-    TEACHER_DEPARTMENTS,
-} from "@/lib/adminData";
+import { COURSE_CATALOG, AVAILABLE_SESSIONS, TEACHER_DEPARTMENTS } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
+import { getUsersRequest, type UserDto } from "@/lib/api/users";
 import { X, ChevronDown, Search, UserPlus, Users } from "lucide-react";
 
 const DEPARTMENT_OPTIONS: string[] = [...TEACHER_DEPARTMENTS];
@@ -27,6 +22,46 @@ interface CourseFormModalProps {
     onClose: () => void;
 }
 
+function mapUserDtoToAdminUser(dto: UserDto): AdminUser {
+    return {
+        id: dto.id,
+        name: dto.name,
+        email: dto.email,
+        role: dto.role as AdminUser["role"],
+        isActive: dto.isActive,
+        createdAt: dto.createdAtUtc.split("T")[0],
+        studentDetails: dto.studentDetails
+            ? {
+                fathersName: dto.studentDetails.fathersName ?? "",
+                mothersName: dto.studentDetails.mothersName ?? "",
+                dateOfBirth: dto.studentDetails.dateOfBirth ?? "",
+                mobile: dto.studentDetails.mobile ?? "",
+                nationality: dto.studentDetails.nationality ?? "",
+                studentId: dto.studentDetails.studentId ?? "",
+                regNo: dto.studentDetails.regNo ?? "",
+                department: dto.studentDetails.department ?? "",
+                currentProgram: (dto.studentDetails.currentProgram ?? "Undergraduate") as AdminUser["studentDetails"] extends infer S ? S extends { currentProgram: infer P } ? P : never : never,
+                session: dto.studentDetails.session ?? "",
+                semesterSession: dto.studentDetails.semesterSession ?? "",
+                address: {
+                    street: dto.studentDetails.address?.street ?? "",
+                    city: dto.studentDetails.address?.city ?? "",
+                    state: dto.studentDetails.address?.state ?? "",
+                    zip: dto.studentDetails.address?.zip ?? "",
+                    country: dto.studentDetails.address?.country ?? "",
+                },
+            }
+            : undefined,
+        teacherDetails: dto.teacherDetails
+            ? {
+                teacherId: dto.teacherDetails.teacherId ?? "",
+                designation: (dto.teacherDetails.designation ?? "Assistant Professor") as AdminUser["teacherDetails"] extends infer T ? T extends { designation: infer D } ? D : never : never,
+                department: dto.teacherDetails.department ?? "",
+            }
+            : undefined,
+    };
+}
+
 export function CourseFormModal({ open, course, onSave, onClose }: CourseFormModalProps) {
     const [program, setProgram] = useState("");
     const [department, setDepartment] = useState("");
@@ -34,10 +69,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     const [courseName, setCourseName] = useState("");
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
-
     const [teacherDeptFilter, setTeacherDeptFilter] = useState("");
     const [teacherIds, setTeacherIds] = useState<number[]>([]);
-
     const [studentProgram, setStudentProgram] = useState("");
     const [studentDept, setStudentDept] = useState("");
     const [studentSession, setStudentSession] = useState("");
@@ -47,16 +80,38 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     const [manualStudentResults, setManualStudentResults] = useState<AdminUser[]>([]);
     const [showManualResults, setShowManualResults] = useState(false);
 
+    const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
+    const lastAppliedGroupFilter = useRef<string>("");
+
+    // Fetch teachers/students when the modal opens.
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        setLoadingUsers(true);
+        getUsersRequest()
+            .then((dtos) => {
+                if (!cancelled) setAllUsers(dtos.map(mapUserDtoToAdminUser));
+            })
+            .catch(() => {
+                if (!cancelled) setAllUsers([]);
+            })
+            .finally(() => {
+                if (!cancelled) setLoadingUsers(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
+
     const allTeachers = useMemo(
-        () => adminUsers.filter((u) => u.role === "Teacher" && u.isActive),
-        []
+        () => allUsers.filter((u) => u.role === "Teacher" && u.isActive),
+        [allUsers]
     );
     const allStudents = useMemo(
-        () => adminUsers.filter((u) => u.role === "Student"),
-        []
+        () => allUsers.filter((u) => u.role === "Student"),
+        [allUsers]
     );
-
-    const lastAppliedGroupFilter = useRef<string>("");
 
     const availableCourses = useMemo(() => {
         return COURSE_CATALOG.filter(
@@ -83,48 +138,39 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         return new Set([...groupIds, ...manualIds]).size;
     }, [enrolledGroups, manualStudentIds]);
 
-    /* ─── Helper: Build groups from a list of student IDs ─── */
     const buildGroupsFromStudentIds = (ids: number[]): { groups: EnrolledGroup[]; manual: number[] } => {
         const groupMap = new Map<string, EnrolledGroup>();
         const manual: number[] = [];
-
         for (const id of ids) {
             const student = allStudents.find((s) => s.id === id);
             if (!student?.studentDetails) {
                 manual.push(id);
                 continue;
             }
-
             const d = student.studentDetails;
             const prog = d.currentProgram ?? "";
             const dept = d.department ?? "";
             const sess = d.semesterSession ?? "";
-
             if (!prog || !dept || !sess) {
                 manual.push(id);
                 continue;
             }
-
             const key = `${prog}|${dept}|${sess}`;
             if (!groupMap.has(key)) {
                 groupMap.set(key, { program: prog, department: dept, session: sess, studentIds: [] });
             }
             groupMap.get(key)!.studentIds.push(id);
         }
-
         return { groups: Array.from(groupMap.values()), manual };
     };
 
-    /* ─── Auto-enroll group when filters are set ─── */
     useEffect(() => {
         if (!studentProgram || !studentDept || !studentSession) {
             lastAppliedGroupFilter.current = "";
             return;
         }
-
         const filterKey = `${studentProgram}|${studentDept}|${studentSession}`;
         if (filterKey === lastAppliedGroupFilter.current) return;
-
         const matched = allStudents.filter((s) => {
             const d = s.studentDetails;
             return (
@@ -133,11 +179,9 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                 d?.semesterSession === studentSession
             );
         });
-
         if (matched.length > 0) {
             lastAppliedGroupFilter.current = filterKey;
             const groupIds = matched.map((s) => s.id);
-
             setEnrolledGroups((prev) => {
                 const exists = prev.some(
                     (g) => g.program === studentProgram && g.department === studentDept && g.session === studentSession
@@ -147,9 +191,8 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studentProgram, studentDept, studentSession]);
+    }, [studentProgram, studentDept, studentSession, allStudents]);
 
-    /* ─── Initialize form on open ─── */
     useEffect(() => {
         if (open) {
             setProgram(course?.program ?? "");
@@ -167,70 +210,59 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             setManualStudentResults([]);
             setShowManualResults(false);
             lastAppliedGroupFilter.current = "";
-
-            if (course?.studentIds && course.studentIds.length > 0) {
+            if (course?.studentIds && course.studentIds.length > 0 && allStudents.length > 0) {
                 const { groups, manual } = buildGroupsFromStudentIds(course.studentIds);
                 setEnrolledGroups(groups);
                 setManualStudentIds(manual);
             } else {
                 setEnrolledGroups([]);
-                setManualStudentIds([]);
+                setManualStudentIds(course?.studentIds ?? []);
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [open, course]);
+    }, [open, course, allStudents]);
 
-    /* ─── Cascade reset handlers ─── */
     const handleProgramChange = (value: string) => {
         setProgram(value);
         setCourseName("");
         clearError("program");
         clearError("courseName");
     };
-
     const handleDepartmentChange = (value: string) => {
         setDepartment(value);
         setCourseName("");
         clearError("department");
         clearError("courseName");
     };
-
     const handleSessionChange = (value: string) => {
         setSession(value);
         clearError("session");
     };
-
     const handleCourseNameChange = (value: string) => {
         setCourseName(value);
         clearError("courseName");
     };
-
     const handleTeacherDeptChange = (value: string) => {
         setTeacherDeptFilter(value);
     };
-
     const handleStudentProgramChange = (value: string) => {
         setStudentProgram(value);
         setStudentDept("");
         setStudentSession("");
         lastAppliedGroupFilter.current = "";
     };
-
     const handleStudentDeptChange = (value: string) => {
         setStudentDept(value);
         setStudentSession("");
         lastAppliedGroupFilter.current = "";
     };
-
     const handleStudentSessionChange = (value: string) => {
         setStudentSession(value);
         lastAppliedGroupFilter.current = "";
     };
-
     const removeGroup = (index: number) => {
         setEnrolledGroups((prev) => prev.filter((_, i) => i !== index));
     };
-
     const handleManualSearch = (value: string) => {
         setManualStudentSearch(value);
         if (value.trim().length >= 2) {
@@ -247,7 +279,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
             setShowManualResults(false);
         }
     };
-
     const addManualStudent = (student: AdminUser) => {
         setManualStudentIds((prev) => {
             if (prev.includes(student.id)) return prev;
@@ -257,17 +288,14 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         setManualStudentResults([]);
         setShowManualResults(false);
     };
-
     const removeManualStudent = (id: number) => {
         setManualStudentIds((prev) => prev.filter((s) => s !== id));
     };
-
     const toggleTeacher = (id: number) => {
         setTeacherIds((prev) =>
             prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
         );
     };
-
     const clearError = (key: string) =>
         setErrors((prev) => {
             if (!prev[key]) return prev;
@@ -295,7 +323,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
         const errs = validate();
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
-
         onSave({
             name: courseName,
             program,
@@ -312,23 +339,20 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-2xl bg-white shadow-xl">
-                {/* Header */}
                 <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
                     <h2 className="text-xl font-semibold text-gray-900">
                         {course ? "Edit Course" : "Add New Course"}
                     </h2>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="cursor-pointer rounded-full p-2 text-gray-600 hover:bg-gray-100"
-                    >
+                    <button type="button" onClick={onClose} className="cursor-pointer rounded-full p-2 text-gray-600 hover:bg-gray-100">
                         <X className="h-5 w-5" />
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="min-h-0 flex-1 space-y-8 overflow-y-auto px-6 py-6">
-                    {/* ═══════════ SECTION 1: Course Details ═══════════ */}
+                    {loadingUsers && (
+                        <p className="text-sm text-gray-500">Loading teachers & students…</p>
+                    )}
+
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">Course Details</h3>
                         <div className="grid gap-5 md:grid-cols-2">
@@ -433,7 +457,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                         </div>
                     </section>
 
-                    {/* ═══════════ SECTION 2: Assigned Teachers ═══════════ */}
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">
                             Assigned Teachers
@@ -443,7 +466,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 </span>
                             )}
                         </h3>
-
                         <div className="mb-3">
                             <label className="mb-1.5 block text-sm font-medium text-gray-800">
                                 Select Department to view teachers
@@ -462,17 +484,13 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-700" />
                             </div>
                         </div>
-
                         {teacherDeptFilter && (
                             <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
                                 {filteredTeachers.length === 0 ? (
                                     <p className="px-4 py-3 text-sm text-gray-500">No active teachers in {teacherDeptFilter}.</p>
                                 ) : (
                                     filteredTeachers.map((t) => (
-                                        <label
-                                            key={t.id}
-                                            className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-gray-50"
-                                        >
+                                        <label key={t.id} className="flex cursor-pointer items-center gap-3 px-4 py-2.5 hover:bg-gray-50">
                                             <input
                                                 type="checkbox"
                                                 checked={teacherIds.includes(t.id)}
@@ -490,22 +508,14 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 )}
                             </div>
                         )}
-
                         {teacherIds.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
                                 {teacherIds.map((id) => {
-                                    const teacher = adminUsers.find((u) => u.id === id);
+                                    const teacher = allUsers.find((u) => u.id === id);
                                     return teacher ? (
-                                        <span
-                                            key={id}
-                                            className="inline-flex items-center gap-1 rounded-full bg-[#e8f0fe] px-3 py-1 text-xs font-medium text-[#174ea6]"
-                                        >
+                                        <span key={id} className="inline-flex items-center gap-1 rounded-full bg-[#e8f0fe] px-3 py-1 text-xs font-medium text-[#174ea6]">
                                             {teacher.name}
-                                            <button
-                                                type="button"
-                                                onClick={() => toggleTeacher(id)}
-                                                className="ml-1 cursor-pointer text-[#174ea6] hover:text-[#c5221f]"
-                                            >
+                                            <button type="button" onClick={() => toggleTeacher(id)} className="ml-1 cursor-pointer text-[#174ea6] hover:text-[#c5221f]">
                                                 ×
                                             </button>
                                         </span>
@@ -515,7 +525,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                         )}
                     </section>
 
-                    {/* ═══════════ SECTION 3: Enrolled Students ═══════════ */}
                     <section>
                         <h3 className="mb-4 text-lg font-semibold text-gray-900">
                             Enrolled Students
@@ -525,8 +534,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 </span>
                             )}
                         </h3>
-
-                        {/* Group enrollment filters */}
                         <div className="mb-4 rounded-md border border-gray-200 bg-[#f8f9fa] p-4">
                             <p className="mb-3 text-sm font-medium text-gray-700">Group Enrollment</p>
                             <div className="grid gap-3 sm:grid-cols-3">
@@ -574,7 +581,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             </div>
                         </div>
 
-                        {/* Manual student enrollment */}
                         <div className="mb-4 rounded-md border border-gray-200 bg-[#f8f9fa] p-4">
                             <p className="mb-3 text-sm font-medium text-gray-700">Manual Enrollment</p>
                             <div className="relative">
@@ -617,7 +623,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             </div>
                         </div>
 
-                        {/* Enrolled Groups Display */}
                         {enrolledGroups.length > 0 && (
                             <div className="mb-4">
                                 <p className="mb-2 text-sm font-medium text-gray-700">
@@ -652,7 +657,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             </div>
                         )}
 
-                        {/* Manually Enrolled Students Display */}
                         {manualStudentIds.length > 0 && (
                             <div>
                                 <p className="mb-2 text-sm font-medium text-gray-700">
@@ -660,12 +664,9 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                                 </p>
                                 <div className="max-h-48 overflow-y-auto rounded-md border border-gray-200">
                                     {manualStudentIds.map((id) => {
-                                        const student = adminUsers.find((u) => u.id === id);
+                                        const student = allUsers.find((u) => u.id === id);
                                         return student ? (
-                                            <div
-                                                key={id}
-                                                className="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 last:border-b-0"
-                                            >
+                                            <div key={id} className="flex items-center gap-3 border-b border-gray-100 px-4 py-2.5 last:border-b-0">
                                                 <div className="min-w-0 flex-1">
                                                     <span className="block truncate text-sm text-gray-900">{student.name}</span>
                                                     <span className="block text-xs text-gray-500">
@@ -688,7 +689,6 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                         )}
                     </section>
 
-                    {/* Active Toggle */}
                     <div className="flex items-center justify-between rounded-md border border-gray-200 px-4 py-3">
                         <span className="text-sm text-gray-800">Active Course</span>
                         <button
@@ -696,18 +696,13 @@ export function CourseFormModal({ open, course, onSave, onClose }: CourseFormMod
                             role="switch"
                             aria-checked={isActive}
                             onClick={() => setIsActive((v) => !v)}
-                            className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors ${isActive ? "bg-[#1a73e8]" : "bg-gray-300"
-                                }`}
+                            className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-full transition-colors ${isActive ? "bg-[#1a73e8]" : "bg-gray-300"}`}
                         >
-                            <span
-                                className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${isActive ? "left-6" : "left-1"
-                                    }`}
-                            />
+                            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${isActive ? "left-6" : "left-1"}`} />
                         </button>
                     </div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
                     <button
                         type="button"

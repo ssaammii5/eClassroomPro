@@ -8,7 +8,7 @@ import { PeopleView } from "@/components/class/PeopleView";
 import { StreamView } from "@/components/class/StreamView";
 import { TeacherClassworkView } from "@/components/class/TeacherClassworkView";
 import { AssignmentCreateView } from "@/components/class/AssignmentCreateView";
-import { currentUser } from "@/lib/currentUser";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import type { ClassDetails, ClassworkEntry } from "@/lib/schemas";
 import { loadTeacherClasswork, saveTeacherClasswork } from "@/lib/teacherClasswork";
 
@@ -18,8 +18,9 @@ interface ClassPageClientProps {
 }
 
 export function ClassPageClient({ title, details }: ClassPageClientProps) {
+    const { user } = useAuth();
     // Teachers (and admins, for demo convenience) get the teacher experience.
-    const isTeacher = currentUser.role === "Teacher" || currentUser.role === "Admin";
+    const isTeacher = user?.role === "Teacher" || user?.role === "Admin";
 
     const [tab, setTab] = useState<ClassTab>("stream");
     const [classwork, setClasswork] = useState<ClassworkEntry[]>(details.classwork);
@@ -41,16 +42,20 @@ export function ClassPageClient({ title, details }: ClassPageClientProps) {
         setEditing(null);
         setEditorOpen(true);
     };
+
     const openEdit = (entry: ClassworkEntry) => {
         setEditing(entry);
         setEditorOpen(true);
     };
+
     const closeEditor = () => {
         setEditorOpen(false);
         setEditing(null);
     };
+
     const handleDelete = (entry: ClassworkEntry) =>
         mutateClasswork(classwork.filter((i) => i.id !== entry.id));
+
     const handleSubmit = (entry: ClassworkEntry) => {
         const exists = classwork.some((i) => i.id === entry.id);
         mutateClasswork(

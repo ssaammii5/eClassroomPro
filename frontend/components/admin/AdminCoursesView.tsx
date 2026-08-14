@@ -1,23 +1,34 @@
 "use client";
-
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Plus, Search, Pencil, Trash2 } from "lucide-react";
 import type { AdminCourse } from "@/lib/adminData";
-import { adminCourses, adminUsers } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { CourseFormModal } from "./CourseFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import {
+    getCoursesRequest, createCourseRequest, updateCourseRequest, deleteCourseRequest,
+    type CourseDto,
+} from "@/lib/api/courses";
 
-function resolveTeacherNames(ids: number[]): string {
-    if (ids.length === 0) return "";
-    return ids
-        .map((id) => adminUsers.find((u) => u.id === id)?.name ?? "Unknown")
-        .join(", ");
+function mapCourseDtoToAdminCourse(dto: CourseDto): AdminCourse {
+    return {
+        id: dto.id,
+        name: dto.name,
+        program: dto.program,
+        department: dto.department,
+        teacherIds: dto.teacherIds,
+        studentIds: dto.studentIds,
+        session: dto.session,
+        isActive: dto.isActive,
+    };
 }
 
 export function AdminCoursesView() {
-    const [courses, setCourses] = useState<AdminCourse[]>(adminCourses);
+    const [courses, setCourses] = useState<AdminCourse[]>([]);
+    const [courseNames, setCourseNames] = useState<Record<number, string[]>>({});
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [programFilter, setProgramFilter] = useState("all");
@@ -25,6 +36,25 @@ export function AdminCoursesView() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminCourse | null>(null);
+
+    const loadCourses = useCallback(async () => {
+        try {
+            setError(null);
+            const dtos = await getCoursesRequest();
+            setCourses(dtos.map(mapCourseDtoToAdminCourse));
+            const names: Record<number, string[]> = {};
+            for (const d of dtos) names[d.id] = d.teacherNames;
+            setCourseNames(names);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load courses.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadCourses();
+    }, [loadCourses]);
 
     const departmentOptions = useMemo(() => {
         return Array.from(new Set(courses.map((c) => c.department).filter(Boolean))).sort();
@@ -40,7 +70,7 @@ export function AdminCoursesView() {
 
     const filtered = useMemo(() => {
         return courses.filter((c) => {
-            const teacherNames = resolveTeacherNames(c.teacherIds);
+            const teacherNames = (courseNames[c.id] ?? []).join(", ");
             const matchSearch =
                 c.name.toLowerCase().includes(search.toLowerCase()) ||
                 teacherNames.toLowerCase().includes(search.toLowerCase());
@@ -49,34 +79,61 @@ export function AdminCoursesView() {
             const matchSession = sessionFilter === "all" || c.session === sessionFilter;
             return matchSearch && matchDept && matchProgram && matchSession;
         });
-    }, [courses, search, departmentFilter, programFilter, sessionFilter]);
+    }, [courses, courseNames, search, departmentFilter, programFilter, sessionFilter]);
 
-    const handleSave = (data: Omit<AdminCourse, "id">) => {
-        if (editingCourse) {
-            setCourses((prev) =>
-                prev.map((c) => (c.id === editingCourse.id ? { ...c, ...data } : c))
-            );
-        } else {
-            const newCourse: AdminCourse = {
-                ...data,
-                id: Math.max(0, ...courses.map((c) => c.id)) + 1,
+    const handleSave = async (data: Omit<AdminCourse, "id">) => {
+        try {
+            setError(null);
+            const payload = {
+                name: data.name,
+                subject: "",
+                program: data.program,
+                department: data.department,
+                session: data.session,
+                isActive: data.isActive,
+                teacherIds: data.teacherIds,
+                studentIds: data.studentIds,
             };
-            setCourses((prev) => [...prev, newCourse]);
+            if (editingCourse) {
+                await updateCourseRequest(editingCourse.id, payload);
+            } else {
+                await createCourseRequest(payload);
+            }
+            setModalOpen(false);
+            setEditingCourse(null);
+            await loadCourses();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save course.");
         }
-        setModalOpen(false);
-        setEditingCourse(null);
     };
 
-    const handleDelete = () => {
-        if (deleteTarget) {
-            setCourses((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        try {
+            setError(null);
+            await deleteCourseRequest(deleteTarget.id);
+            setDeleteTarget(null);
+            await loadCourses();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete course.");
             setDeleteTarget(null);
         }
     };
 
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
+
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-            {/* Header */}
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">{error}</div>
+            )}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-semibold text-gray-900">Manage Courses</h1>
@@ -94,7 +151,6 @@ export function AdminCoursesView() {
                 </button>
             </div>
 
-            {/* Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative max-w-sm flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -138,7 +194,6 @@ export function AdminCoursesView() {
                 </select>
             </div>
 
-            {/* Table */}
             <div className="mt-6">
                 <DataTable
                     columns={[
@@ -149,7 +204,7 @@ export function AdminCoursesView() {
                             key: "teachers",
                             header: "Teachers",
                             render: (c: AdminCourse) => {
-                                const names = resolveTeacherNames(c.teacherIds);
+                                const names = (courseNames[c.id] ?? []).join(", ");
                                 return names ? (
                                     <span className="text-sm text-gray-900" title={names}>{names}</span>
                                 ) : (
@@ -177,20 +232,10 @@ export function AdminCoursesView() {
                             className: "text-right",
                             render: (c: AdminCourse) => (
                                 <div className="flex items-center justify-end gap-1">
-                                    <button
-                                        type="button"
-                                        title="Edit"
-                                        onClick={() => { setEditingCourse(c); setModalOpen(true); }}
-                                        className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                                    >
+                                    <button type="button" title="Edit" onClick={() => { setEditingCourse(c); setModalOpen(true); }} className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100">
                                         <Pencil className="h-4 w-4" />
                                     </button>
-                                    <button
-                                        type="button"
-                                        title="Delete"
-                                        onClick={() => setDeleteTarget(c)}
-                                        className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50"
-                                    >
+                                    <button type="button" title="Delete" onClick={() => setDeleteTarget(c)} className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50">
                                         <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
@@ -203,13 +248,13 @@ export function AdminCoursesView() {
                 />
             </div>
 
-            {/* Modals */}
             <CourseFormModal
                 open={modalOpen}
                 course={editingCourse}
                 onSave={handleSave}
                 onClose={() => { setModalOpen(false); setEditingCourse(null); }}
             />
+
             <ConfirmDialog
                 open={!!deleteTarget}
                 title="Delete Course"

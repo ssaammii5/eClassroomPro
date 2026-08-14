@@ -1,10 +1,16 @@
 // components/admin/AdminUsersView.tsx
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Plus, Search, Pencil, Trash2, ShieldCheck, ShieldX } from "lucide-react";
 import type { AdminUser } from "@/lib/adminData";
-import { adminUsers } from "@/lib/adminData";
+import {
+    createUserRequest,
+    deleteUserRequest,
+    getUsersRequest,
+    updateUserRequest,
+    type UserDto,
+} from "@/lib/api/users";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { UserFormModal } from "./UserFormModal";
@@ -16,14 +22,44 @@ const ROLE_STYLES: Record<string, string> = {
     Student: "bg-[#e6f4ea] text-[#137333]",
 };
 
+function mapUserDtoToAdminUser(dto: UserDto): AdminUser {
+    return {
+        id: dto.id,
+        name: dto.name,
+        email: dto.email,
+        role: dto.role as AdminUser["role"],
+        isActive: dto.isActive,
+        createdAt: dto.createdAtUtc.split("T")[0],
+    };
+}
+
 export function AdminUsersView() {
-    const [users, setUsers] = useState<AdminUser[]>(adminUsers);
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+
+    const loadUsers = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const all = await getUsersRequest();
+            setUsers(all.map(mapUserDtoToAdminUser));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load users.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        void loadUsers();
+    }, []);
 
     const filtered = useMemo(() => {
         return users.filter((u) => {
@@ -34,42 +70,80 @@ export function AdminUsersView() {
             const matchStatus =
                 statusFilter === "all" ||
                 (statusFilter === "active" ? u.isActive : !u.isActive);
+
             return matchSearch && matchRole && matchStatus;
         });
     }, [users, search, roleFilter, statusFilter]);
 
-    const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
-        if (editingUser) {
-            setUsers((prev) =>
-                prev.map((u) => (u.id === editingUser.id ? { ...u, ...data } : u))
-            );
-        } else {
-            const newUser: AdminUser = {
-                ...data,
-                id: Math.max(...users.map((u) => u.id)) + 1,
-                createdAt: new Date().toISOString().split("T")[0],
-            };
-            setUsers((prev) => [...prev, newUser]);
+    const handleSave = async (data: Omit<AdminUser, "id" | "createdAt">) => {
+        try {
+            if (editingUser) {
+                await updateUserRequest(editingUser.id, {
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    isActive: data.isActive,
+                });
+            } else {
+                const password = `User@${Date.now().toString(36)}`;
+                await createUserRequest({
+                    name: data.name,
+                    email: data.email,
+                    password,
+                    role: data.role,
+                });
+            }
+
+            setModalOpen(false);
+            setEditingUser(null);
+            await loadUsers();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save user.");
         }
-        setModalOpen(false);
-        setEditingUser(null);
     };
 
-    const handleDelete = () => {
-        if (deleteTarget) {
-            setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        try {
+            await deleteUserRequest(deleteTarget.id);
+            setDeleteTarget(null);
+            await loadUsers();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete user.");
             setDeleteTarget(null);
         }
     };
 
-    const toggleActive = (user: AdminUser) => {
-        setUsers((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, isActive: !u.isActive } : u))
-        );
+    const toggleActive = async (user: AdminUser) => {
+        try {
+            await updateUserRequest(user.id, {
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                isActive: !user.isActive,
+            });
+            await loadUsers();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update user status.");
+        }
     };
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
 
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">
+                    {error}
+                </div>
+            )}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-semibold text-gray-900">Manage Users</h1>

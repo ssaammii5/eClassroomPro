@@ -1,12 +1,15 @@
 "use client";
-
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Plus, Search, Pencil, Trash2, GraduationCap, CalendarRange, Building2 } from "lucide-react";
-import type { AcademicProgram, AcademicSemester, AcademicDepartment } from "@/lib/adminData";
-import { academicPrograms, academicSemesters, academicDepartments } from "@/lib/adminData";
 import { DataTable } from "./DataTable";
 import { AcademicFormModal } from "./AcademicFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import {
+    getProgramsRequest, createProgramRequest, updateProgramRequest, deleteProgramRequest,
+    getDepartmentsRequest, createDepartmentRequest, updateDepartmentRequest, deleteDepartmentRequest,
+    getSemestersRequest, createSemesterRequest, updateSemesterRequest, deleteSemesterRequest,
+    type AcademicProgramDto, type AcademicDepartmentDto, type AcademicSemesterDto,
+} from "@/lib/api/academics";
 
 type AcademicTab = "programs" | "departments" | "semesters";
 
@@ -16,43 +19,47 @@ const TABS: { id: AcademicTab; label: string; icon: React.ReactNode }[] = [
     { id: "semesters", label: "Semesters", icon: <CalendarRange className="h-4 w-4" /> },
 ];
 
-/**
- * Returns a numeric rank for a semester string like "January-June/2025".
- * Higher rank = more recent semester.
- * July-December gets +1 over January-June within the same year.
- */
-function semesterRank(name: string): number {
-    const [period, yearStr] = name.split("/");
-    const year = Number(yearStr);
-    if (!Number.isFinite(year)) return 0;
-    const periodIndex = period === "July-December" ? 1 : 0;
-    return year * 2 + periodIndex;
-}
+type AcademicItem = { id: number; name: string; description?: string; code?: string };
 
 export function AdminAcademicsView() {
     const [activeTab, setActiveTab] = useState<AcademicTab>("programs");
+    const [programs, setPrograms] = useState<AcademicProgramDto[]>([]);
+    const [departments, setDepartments] = useState<AcademicDepartmentDto[]>([]);
+    const [semesters, setSemesters] = useState<AcademicSemesterDto[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    // Programs state
-    const [programs, setPrograms] = useState<AcademicProgram[]>(academicPrograms);
     const [programSearch, setProgramSearch] = useState("");
-
-    // Departments state
-    const [departments, setDepartments] = useState<AcademicDepartment[]>(academicDepartments);
     const [departmentSearch, setDepartmentSearch] = useState("");
-
-    // Semesters state
-    const [semesters, setSemesters] = useState<AcademicSemester[]>(academicSemesters);
     const [semesterSearch, setSemesterSearch] = useState("");
 
-    // Modal state
     const [modalOpen, setModalOpen] = useState(false);
     const [modalType, setModalType] = useState<"program" | "semester" | "department">("program");
-    const [editingItem, setEditingItem] = useState<AcademicProgram | AcademicSemester | AcademicDepartment | null>(null);
-
-    // Delete state
+    const [editingItem, setEditingItem] = useState<AcademicItem | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: number; name: string } | null>(null);
 
-    // Filtered data
+    const loadAll = useCallback(async () => {
+        try {
+            setError(null);
+            const [p, d, s] = await Promise.all([
+                getProgramsRequest(),
+                getDepartmentsRequest(),
+                getSemestersRequest(),
+            ]);
+            setPrograms(p);
+            setDepartments(d);
+            setSemesters(s);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load academics.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadAll();
+    }, [loadAll]);
+
     const filteredPrograms = useMemo(() => {
         return programs.filter((p) =>
             p.name.toLowerCase().includes(programSearch.toLowerCase()) ||
@@ -68,105 +75,81 @@ export function AdminAcademicsView() {
     }, [departments, departmentSearch]);
 
     const filteredSemesters = useMemo(() => {
-        return semesters
-            .filter((s) => s.name.toLowerCase().includes(semesterSearch.toLowerCase()))
-            .sort((a, b) => semesterRank(b.name) - semesterRank(a.name));
+        return semesters.filter((s) => s.name.toLowerCase().includes(semesterSearch.toLowerCase()));
     }, [semesters, semesterSearch]);
 
-    // Handlers
     const openAddModal = (type: "program" | "semester" | "department") => {
         setModalType(type);
         setEditingItem(null);
         setModalOpen(true);
     };
 
-    const openEditModal = (type: "program" | "semester" | "department", item: AcademicProgram | AcademicSemester | AcademicDepartment) => {
+    const openEditModal = (type: "program" | "semester" | "department", item: AcademicItem) => {
         setModalType(type);
         setEditingItem(item);
         setModalOpen(true);
     };
 
-    const handleSave = (data: { name: string; description?: string; code?: string }) => {
-        if (modalType === "program") {
-            if (editingItem) {
-                setPrograms((prev) =>
-                    prev.map((p) =>
-                        p.id === editingItem.id
-                            ? { ...p, name: data.name, description: data.description ?? "" }
-                            : p
-                    )
-                );
+    const handleSave = async (data: { name: string; description?: string; code?: string }) => {
+        try {
+            setError(null);
+            if (modalType === "program") {
+                const payload = { name: data.name, description: data.description ?? "" };
+                if (editingItem) await updateProgramRequest(editingItem.id, payload);
+                else await createProgramRequest(payload);
+            } else if (modalType === "department") {
+                const payload = { name: data.name, code: data.code ?? "" };
+                if (editingItem) await updateDepartmentRequest(editingItem.id, payload);
+                else await createDepartmentRequest(payload);
             } else {
-                const newProgram: AcademicProgram = {
-                    id: Math.max(0, ...programs.map((p) => p.id)) + 1,
-                    name: data.name,
-                    description: data.description ?? "",
-                };
-                setPrograms((prev) => [...prev, newProgram]);
+                const payload = { name: data.name };
+                if (editingItem) await updateSemesterRequest(editingItem.id, payload);
+                else await createSemesterRequest(payload);
             }
-        } else if (modalType === "semester") {
-            if (editingItem) {
-                setSemesters((prev) =>
-                    prev.map((s) =>
-                        s.id === editingItem.id
-                            ? { ...s, name: data.name }
-                            : s
-                    )
-                );
-            } else {
-                const newSemester: AcademicSemester = {
-                    id: Math.max(0, ...semesters.map((s) => s.id)) + 1,
-                    name: data.name,
-                };
-                setSemesters((prev) => [...prev, newSemester]);
-            }
-        } else if (modalType === "department") {
-            if (editingItem) {
-                setDepartments((prev) =>
-                    prev.map((d) =>
-                        d.id === editingItem.id
-                            ? { ...d, name: data.name, code: data.code ?? "" }
-                            : d
-                    )
-                );
-            } else {
-                const newDept: AcademicDepartment = {
-                    id: Math.max(0, ...departments.map((d) => d.id)) + 1,
-                    name: data.name,
-                    code: data.code ?? "",
-                };
-                setDepartments((prev) => [...prev, newDept]);
-            }
+            setModalOpen(false);
+            setEditingItem(null);
+            await loadAll();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save.");
         }
-        setModalOpen(false);
-        setEditingItem(null);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!deleteTarget) return;
-        if (deleteTarget.type === "program") {
-            setPrograms((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-        } else if (deleteTarget.type === "semester") {
-            setSemesters((prev) => prev.filter((s) => s.id !== deleteTarget.id));
-        } else if (deleteTarget.type === "department") {
-            setDepartments((prev) => prev.filter((d) => d.id !== deleteTarget.id));
+        try {
+            setError(null);
+            if (deleteTarget.type === "program") await deleteProgramRequest(deleteTarget.id);
+            else if (deleteTarget.type === "department") await deleteDepartmentRequest(deleteTarget.id);
+            else await deleteSemesterRequest(deleteTarget.id);
+            setDeleteTarget(null);
+            await loadAll();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete.");
+            setDeleteTarget(null);
         }
-        setDeleteTarget(null);
     };
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
 
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-            {/* Header */}
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">{error}</div>
+            )}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-3xl font-semibold text-gray-900">Academics</h1>
-                    <p className="mt-1 text-sm text-gray-600">
-                        Manage programs, departments, and semesters for your institution
-                    </p>
+                    <p className="mt-1 text-sm text-gray-600">Manage programs, departments, and semesters for your institution</p>
                 </div>
             </div>
 
-            {/* Tabs */}
             <div className="mt-6 border-b border-gray-200">
                 <nav className="flex gap-8">
                     {TABS.map((tab) => (
@@ -174,8 +157,7 @@ export function AdminAcademicsView() {
                             key={tab.id}
                             type="button"
                             onClick={() => setActiveTab(tab.id)}
-                            className={`relative flex cursor-pointer items-center gap-2 py-3.5 text-sm font-medium transition-colors ${activeTab === tab.id ? "text-[#1a73e8]" : "text-gray-600 hover:text-gray-900"
-                                }`}
+                            className={`relative flex cursor-pointer items-center gap-2 py-3.5 text-sm font-medium transition-colors ${activeTab === tab.id ? "text-[#1a73e8]" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             {tab.icon}
                             {tab.label}
@@ -187,7 +169,6 @@ export function AdminAcademicsView() {
                 </nav>
             </div>
 
-            {/* Programs Tab */}
             {activeTab === "programs" && (
                 <div className="mt-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -210,7 +191,6 @@ export function AdminAcademicsView() {
                             Add Program
                         </button>
                     </div>
-
                     <div className="mt-6">
                         <DataTable
                             columns={[
@@ -221,22 +201,12 @@ export function AdminAcademicsView() {
                                     header: "Actions",
                                     width: "150px",
                                     className: "text-right",
-                                    render: (p: AcademicProgram) => (
+                                    render: (p: AcademicProgramDto) => (
                                         <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                type="button"
-                                                title="Edit"
-                                                onClick={() => openEditModal("program", p)}
-                                                className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                                            >
+                                            <button type="button" title="Edit" onClick={() => openEditModal("program", p)} className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100">
                                                 <Pencil className="h-4 w-4" />
                                             </button>
-                                            <button
-                                                type="button"
-                                                title="Delete"
-                                                onClick={() => setDeleteTarget({ type: "program", id: p.id, name: p.name })}
-                                                className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50"
-                                            >
+                                            <button type="button" title="Delete" onClick={() => setDeleteTarget({ type: "program", id: p.id, name: p.name })} className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -251,7 +221,6 @@ export function AdminAcademicsView() {
                 </div>
             )}
 
-            {/* Departments Tab */}
             {activeTab === "departments" && (
                 <div className="mt-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -274,7 +243,6 @@ export function AdminAcademicsView() {
                             Add Department
                         </button>
                     </div>
-
                     <div className="mt-6">
                         <DataTable
                             columns={[
@@ -285,22 +253,12 @@ export function AdminAcademicsView() {
                                     header: "Actions",
                                     width: "150px",
                                     className: "text-right",
-                                    render: (d: AcademicDepartment) => (
+                                    render: (d: AcademicDepartmentDto) => (
                                         <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                type="button"
-                                                title="Edit"
-                                                onClick={() => openEditModal("department", d)}
-                                                className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                                            >
+                                            <button type="button" title="Edit" onClick={() => openEditModal("department", d)} className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100">
                                                 <Pencil className="h-4 w-4" />
                                             </button>
-                                            <button
-                                                type="button"
-                                                title="Delete"
-                                                onClick={() => setDeleteTarget({ type: "department", id: d.id, name: d.name })}
-                                                className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50"
-                                            >
+                                            <button type="button" title="Delete" onClick={() => setDeleteTarget({ type: "department", id: d.id, name: d.name })} className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -315,7 +273,6 @@ export function AdminAcademicsView() {
                 </div>
             )}
 
-            {/* Semesters Tab */}
             {activeTab === "semesters" && (
                 <div className="mt-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -338,7 +295,6 @@ export function AdminAcademicsView() {
                             Add Semester
                         </button>
                     </div>
-
                     <div className="mt-6">
                         <DataTable
                             columns={[
@@ -348,22 +304,12 @@ export function AdminAcademicsView() {
                                     header: "Actions",
                                     width: "150px",
                                     className: "text-right",
-                                    render: (s: AcademicSemester) => (
+                                    render: (s: AcademicSemesterDto) => (
                                         <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                type="button"
-                                                title="Edit"
-                                                onClick={() => openEditModal("semester", s)}
-                                                className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100"
-                                            >
+                                            <button type="button" title="Edit" onClick={() => openEditModal("semester", s)} className="cursor-pointer rounded p-2 text-gray-600 hover:bg-gray-100">
                                                 <Pencil className="h-4 w-4" />
                                             </button>
-                                            <button
-                                                type="button"
-                                                title="Delete"
-                                                onClick={() => setDeleteTarget({ type: "semester", id: s.id, name: s.name })}
-                                                className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50"
-                                            >
+                                            <button type="button" title="Delete" onClick={() => setDeleteTarget({ type: "semester", id: s.id, name: s.name })} className="cursor-pointer rounded p-2 text-[#c5221f] hover:bg-red-50">
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -378,7 +324,6 @@ export function AdminAcademicsView() {
                 </div>
             )}
 
-            {/* Form Modal */}
             <AcademicFormModal
                 open={modalOpen}
                 type={modalType}
@@ -387,7 +332,6 @@ export function AdminAcademicsView() {
                 onClose={() => { setModalOpen(false); setEditingItem(null); }}
             />
 
-            {/* Delete Confirmation */}
             <ConfirmDialog
                 open={!!deleteTarget}
                 title={`Delete ${deleteTarget?.type === "program" ? "Program" : deleteTarget?.type === "semester" ? "Semester" : "Department"}`}

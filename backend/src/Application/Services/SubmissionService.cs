@@ -227,26 +227,27 @@ public class SubmissionService
         return submissions.Select(ToDto).ToList();
     }
 
-    private void EnsureCanManageAssignment(Assignment assignment)
+private void EnsureCanManageAssignment(Assignment assignment)
+{
+    if (_currentUserService.IsAdmin)
     {
-        if (_currentUserService.IsAdmin)
-        {
-            return;
-        }
-
-        if (!_currentUserService.IsTeacher)
-        {
-            throw new ForbiddenAccessException("Only teachers or admins can manage submissions.");
-        }
-
-        var isAssignmentCreator = assignment.CreatedById == _currentUserService.UserId;
-        var isCourseTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
-
-        if (!isAssignmentCreator && !isCourseTeacher)
-        {
-            throw new ForbiddenAccessException("You do not have permission to manage this submission.");
-        }
+        return;
     }
+
+    if (!_currentUserService.IsTeacher)
+    {
+        throw new ForbiddenAccessException("Only teachers or admins can manage submissions.");
+    }
+
+    var isAssignmentCreator = assignment.CreatedById == _currentUserService.UserId;
+    var isPrimaryTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
+    var isCourseTeacher = assignment.Course?.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId) ?? false;
+
+    if (!isAssignmentCreator && !isPrimaryTeacher && !isCourseTeacher)
+    {
+        throw new ForbiddenAccessException("You do not have permission to manage this submission.");
+    }
+}
 
     private static SubmissionDto ToDto(Submission submission)
     {
