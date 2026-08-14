@@ -1,22 +1,25 @@
-# Use the current Active LTS lightweight image
+# ---------- Base ----------
 FROM node:24-alpine
 
-# Enable corepack to automatically use pnpm@11.21.0 defined in package.json
-RUN corepack enable pnpm
+# Node 24 no longer reliably ships corepack, so install pnpm explicitly.
+# Version matches "packageManager" in package.json.
+RUN npm install -g pnpm@11.21.0
 
 WORKDIR /app
 
-# Copy package files (targeting pnpm-lock.yaml instead of package-lock.json)
-COPY package.json pnpm-lock.yaml* ./
+# Copy dependency manifests first for better layer caching
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Install dependencies using pnpm
-RUN pnpm install
+# Install dependencies
+RUN pnpm install --frozen-lockfile
 
-# Copy the rest of your frontend application code
+# Copy the rest of the source.
+# NOTE: In development, docker-compose bind-mounts ./frontend over /app,
+# so these files are replaced at runtime. We keep this COPY so the image
+# also works standalone (e.g. `docker run` without volumes).
 COPY . .
 
-# Expose the default Next.js port
 EXPOSE 3000
 
-# Start Next.js in development mode
+# Development server with hot reload
 CMD ["pnpm", "dev"]

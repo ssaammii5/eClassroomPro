@@ -1,7 +1,9 @@
 services:
+  # ---------- PostgreSQL ----------
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: eclassroompro-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: eClassroomPro
       POSTGRES_USER: postgres
@@ -16,45 +18,55 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------- .NET API ----------
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: eclassroompro-api
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=eClassroomPro;Username=postgres;Password=postgres
       Jwt__Secret: ${JWT_SECRET:-DevelopmentOnlySecret_ReplaceMe_1234567890_1234567890_1234567890_ABCDEFGHIJKLMNOPQRSTUVWXYZ}
-      Jwt__Issuer: eClassroomPro.API
-      Jwt__Audience: eClassroomPro.Client
-      Jwt__ExpiresMinutes: "15"
-      Jwt__RefreshTokenExpirationDays: "7"
+      Jwt__Issuer: ${JWT_ISSUER:-eClassroomPro.API}
+      Jwt__Audience: ${JWT_AUDIENCE:-eClassroomPro.Client}
+      Jwt__ExpiresMinutes: ${JWT_EXPIRES_MINUTES:-15}
+      Jwt__RefreshTokenExpirationDays: ${JWT_REFRESH_DAYS:-7}
     ports:
       - "5000:8080"
 
-volumes:
-  pgdata:
-
-
-
+  # ---------- Next.js Frontend (dev mode, hot reload) ----------
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: eclassroompro-frontend
+    restart: unless-stopped
     depends_on:
       - api
     ports:
       - "3000:3000"
-    volumes:
-      # Mount your local code into the container for Hot Module Replacement (HMR)
-      - ./frontend:/app
-      # Prevent your local node_modules from overriding the container's node_modules
-      - /app/node_modules
-      # If using Next.js 13+, prevent the .next folder from being overwritten
-      - /app/.next
     environment:
-      # Tell Next.js how to reach your ASP.NET Core API
-      # Use localhost because the browser makes this request, not the Docker container
-      - NEXT_PUBLIC_API_URL=http://localhost:5000
-      # Use the internal Docker network for Server-Side Rendering (SSR) API calls
-      - INTERNAL_API_URL=http://api:8080
+      # Browser-side calls (the browser runs on your host machine)
+      NEXT_PUBLIC_API_URL: http://localhost:5000
+      # Server-side calls (inside the Docker network)
+      INTERNAL_API_URL: http://api:8080
+      # Enables file watching for hot reload on Docker Desktop (Windows/Mac)
+      WATCHPACK_POLLING: "true"
+    volumes:
+      # Live-mount your source for hot module replacement
+      - ./frontend:/app
+      # Preserve the container's node_modules (don't shadow it with the host's)
+      - frontend_node_modules:/app/node_modules
+      # Isolate Next.js build cache
+      - frontend_next:/app/.next
+
+volumes:
+  pgdata:
+  frontend_node_modules:
+  frontend_next:
