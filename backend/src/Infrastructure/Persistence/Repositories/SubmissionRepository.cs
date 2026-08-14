@@ -34,6 +34,19 @@ public class SubmissionRepository : ISubmissionRepository
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
+    public async Task<Submission?> GetByIdWithFullDetailAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _context.Submissions
+            .AsNoTracking()
+            .Include(x => x.Assignment!).ThenInclude(a => a.Course)
+            .Include(x => x.Assignment!).ThenInclude(a => a.CreatedBy)
+            .Include(x => x.Student!).ThenInclude(s => s.StudentDetails)
+            .Include(x => x.GradedBy)
+            .Include(x => x.Attachments)
+            .Include(x => x.Activities).ThenInclude(a => a.Actor)
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
     public async Task<Submission?> GetByAssignmentAndStudentAsync(
         int assignmentId,
         int studentId,

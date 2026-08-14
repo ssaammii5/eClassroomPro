@@ -22,7 +22,6 @@ public class SubmissionsController : ControllerBase
     public async Task<ActionResult<SubmissionDto>> Submit(SubmitAssignmentDto dto, CancellationToken cancellationToken)
     {
         var result = await _submissionService.SubmitAsync(dto, cancellationToken);
-
         return Ok(result);
     }
 
@@ -31,7 +30,24 @@ public class SubmissionsController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<SubmissionDto>>> GetMySubmissions(CancellationToken cancellationToken)
     {
         var result = await _submissionService.GetMySubmissionsAsync(cancellationToken);
+        return Ok(result);
+    }
 
+    // Phase 6: admin/teacher full list (includes "Pending" rows for not-yet-submitted)
+    [Authorize(Roles = "Admin,Teacher")]
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<SubmissionDto>>> GetAll(CancellationToken cancellationToken)
+    {
+        var result = await _submissionService.GetAllForAdminAsync(cancellationToken);
+        return Ok(result);
+    }
+
+    // Phase 6: detail (positive id = real submission, negative id = pending row)
+    [Authorize(Roles = "Admin,Teacher")]
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<SubmissionDto>> GetById(int id, CancellationToken cancellationToken)
+    {
+        var result = await _submissionService.GetDetailAsync(id, cancellationToken);
         return Ok(result);
     }
 
@@ -42,7 +58,6 @@ public class SubmissionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _submissionService.GetByAssignmentAsync(assignmentId, cancellationToken);
-
         return Ok(result);
     }
 
@@ -54,7 +69,6 @@ public class SubmissionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _submissionService.GradeAsync(submissionId, dto, cancellationToken);
-
         return Ok(result);
     }
 
@@ -66,7 +80,6 @@ public class SubmissionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _submissionService.ChangeStatusAsync(submissionId, dto, cancellationToken);
-
         return Ok(result);
     }
 }

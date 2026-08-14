@@ -31,5 +31,10 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
             .WithMany(x => x.Submissions)
             .HasForeignKey(x => x.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(x => x.GradedBy)
+            .WithMany()
+            .HasForeignKey(x => x.GradedById)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

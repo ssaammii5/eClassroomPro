@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
+
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     GraduationCap,
     Building2,
@@ -9,11 +10,11 @@ import {
     SlidersHorizontal,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { adminSubmissions, adminCourses, adminUsers } from "@/lib/adminData";
-import type { AdminSubmission } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
+import { getSubmissionsRequest, type SubmissionDto } from "@/lib/api/submissions";
+
 function sessionRank(key: string): number {
     const [period, yearStr] = key.split("/");
     const year = Number(yearStr);
@@ -21,122 +22,173 @@ function sessionRank(key: string): number {
     const periodIndex = period === "July-December" ? 1 : 0;
     return year * 2 + periodIndex;
 }
+
 const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
     PROGRAM_TYPES.map((p, i) => [p, i])
 );
-function resolveCourseInfo(courseId: number) {
-    const course = adminCourses.find((c) => c.id === courseId);
+
+/** Row shape used by the existing table / grouping logic (identical to before). */
+interface SubmissionRow {
+    id: number;
+    assignmentId: number;
+    assignmentTitle: string;
+    courseId: number;
+    courseName: string;
+    studentId: number;
+    studentName: string;
+    status: "Submitted" | "Graded" | "Pending";
+    marks: number | null;
+    feedback: string | null;
+    submittedAt: string;
+    // extra context carried directly from the API (replaces mock lookups)
+    program: string;
+    department: string;
+    session: string;
+    studentAcademicId: string;
+}
+
+function mapDtoToRow(dto: SubmissionDto): SubmissionRow {
+    const submitted = Boolean(dto.submittedAtUtc);
     return {
-        program: course?.program ?? "Unknown",
-        department: course?.department ?? "Unknown",
-        session: course?.session ?? "Unknown",
+        id: dto.id,
+        assignmentId: dto.assignmentId,
+        assignmentTitle: dto.assignmentTitle ?? "Unknown Assignment",
+        courseId: dto.courseId,
+        courseName: dto.courseName ?? "Unknown Course",
+        studentId: dto.studentId,
+        studentName: dto.studentName ?? "Unknown Student",
+        status: submitted ? (dto.status as "Submitted" | "Graded") : "Pending",
+        marks: dto.marks,
+        feedback: dto.feedback,
+        submittedAt: dto.submittedAtUtc ? dto.submittedAtUtc.split("T")[0] : "",
+        program: dto.program ?? "Unknown",
+        department: dto.department ?? "Unknown",
+        session: dto.session ?? "Unknown",
+        studentAcademicId: dto.studentAcademicId ?? "",
     };
 }
-function resolveStudentAcademicId(studentId: number): string {
-    const user = adminUsers.find((u) => u.id === studentId);
-    return user?.studentDetails?.studentId ?? "";
-}
+
 interface CourseGroup {
     courseName: string;
-    submissions: AdminSubmission[];
+    submissions: SubmissionRow[];
 }
+
 interface SessionGroup {
     session: string;
     courses: CourseGroup[];
     count: number;
 }
+
 interface DeptGroup {
     name: string;
     sessions: SessionGroup[];
     count: number;
 }
+
 interface ProgramGroup {
     name: string;
     departments: DeptGroup[];
     count: number;
 }
+
 export function AdminSubmissionsView() {
     const router = useRouter();
+    const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [programFilter, setProgramFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [sessionFilter, setSessionFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
+
+    const loadSubmissions = useCallback(async () => {
+        try {
+            setError(null);
+            const dtos = await getSubmissionsRequest();
+            setSubmissions(dtos.map(mapDtoToRow));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load submissions.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadSubmissions();
+    }, [loadSubmissions]);
+
     const departmentOptions = useMemo(() => {
         const base =
             programFilter === "all"
-                ? adminSubmissions
-                : adminSubmissions.filter(
-                    (s) => resolveCourseInfo(s.courseId).program === programFilter
-                );
-        return Array.from(
-            new Set(base.map((s) => resolveCourseInfo(s.courseId).department).filter(Boolean))
-        ).sort();
-    }, [programFilter]);
+                ? submissions
+                : submissions.filter((s) => s.program === programFilter);
+        return Array.from(new Set(base.map((s) => s.department).filter(Boolean))).sort();
+    }, [submissions, programFilter]);
+
     const sessionOptions = useMemo(() => {
         const base =
             programFilter === "all"
-                ? adminSubmissions
-                : adminSubmissions.filter(
-                    (s) => resolveCourseInfo(s.courseId).program === programFilter
-                );
-        return Array.from(
-            new Set(base.map((s) => resolveCourseInfo(s.courseId).session).filter(Boolean))
-        ).sort((a, b) => sessionRank(b) - sessionRank(a));
-    }, [programFilter]);
+                ? submissions
+                : submissions.filter((s) => s.program === programFilter);
+        return Array.from(new Set(base.map((s) => s.session).filter(Boolean))).sort(
+            (a, b) => sessionRank(b) - sessionRank(a)
+        );
+    }, [submissions, programFilter]);
+
     const filtered = useMemo(() => {
-        return adminSubmissions.filter((s) => {
-            const courseInfo = resolveCourseInfo(s.courseId);
-            const academicId = resolveStudentAcademicId(s.studentId);
+        return submissions.filter((s) => {
             const matchSearch =
                 s.studentName.toLowerCase().includes(search.toLowerCase()) ||
                 s.assignmentTitle.toLowerCase().includes(search.toLowerCase()) ||
                 s.courseName.toLowerCase().includes(search.toLowerCase()) ||
-                academicId.toLowerCase().includes(search.toLowerCase());
-            const matchProgram =
-                programFilter === "all" || courseInfo.program === programFilter;
-            const matchDept =
-                departmentFilter === "all" || courseInfo.department === departmentFilter;
-            const matchSession =
-                sessionFilter === "all" || courseInfo.session === sessionFilter;
+                s.studentAcademicId.toLowerCase().includes(search.toLowerCase());
+            const matchProgram = programFilter === "all" || s.program === programFilter;
+            const matchDept = departmentFilter === "all" || s.department === departmentFilter;
+            const matchSession = sessionFilter === "all" || s.session === sessionFilter;
             const matchStatus = statusFilter === "all" || s.status === statusFilter;
             return matchSearch && matchProgram && matchDept && matchSession && matchStatus;
         });
-    }, [search, programFilter, departmentFilter, sessionFilter, statusFilter]);
+    }, [submissions, search, programFilter, departmentFilter, sessionFilter, statusFilter]);
+
     const activeFilterCount = [
         programFilter,
         departmentFilter,
         sessionFilter,
         statusFilter,
     ].filter((f) => f !== "all").length;
+
     const clearFilters = () => {
         setProgramFilter("all");
         setDepartmentFilter("all");
         setSessionFilter("all");
         setStatusFilter("all");
     };
+
     const programGroups = useMemo<ProgramGroup[]>(() => {
         const map = new Map<
             string,
-            Map<string, Map<string, Map<string, AdminSubmission[]>>>
+            Map<string, Map<string, Map<string, SubmissionRow[]>>>
         >();
+
         for (const s of filtered) {
-            const info = resolveCourseInfo(s.courseId);
-            if (!map.has(info.program)) map.set(info.program, new Map());
-            const deptMap = map.get(info.program)!;
-            if (!deptMap.has(info.department)) deptMap.set(info.department, new Map());
-            const sessionMap = deptMap.get(info.department)!;
-            if (!sessionMap.has(info.session)) sessionMap.set(info.session, new Map());
-            const courseMap = sessionMap.get(info.session)!;
+            if (!map.has(s.program)) map.set(s.program, new Map());
+            const deptMap = map.get(s.program)!;
+            if (!deptMap.has(s.department)) deptMap.set(s.department, new Map());
+            const sessionMap = deptMap.get(s.department)!;
+            if (!sessionMap.has(s.session)) sessionMap.set(s.session, new Map());
+            const courseMap = sessionMap.get(s.session)!;
             if (!courseMap.has(s.courseName)) courseMap.set(s.courseName, []);
             courseMap.get(s.courseName)!.push(s);
         }
+
         const programs = Array.from(map.keys()).sort((a, b) => {
             const ia = PROGRAM_ORDER[a] ?? 99;
             const ib = PROGRAM_ORDER[b] ?? 99;
             return ia - ib || a.localeCompare(b);
         });
+
         return programs.map((program) => {
             const deptMap = map.get(program)!;
             const departments: DeptGroup[] = Array.from(deptMap.keys())
@@ -148,9 +200,9 @@ export function AdminSubmissionsView() {
                         .map(([session, courseMap]) => {
                             const courses: CourseGroup[] = Array.from(courseMap.entries())
                                 .sort((a, b) => a[0].localeCompare(b[0]))
-                                .map(([courseName, submissions]) => ({
+                                .map(([courseName, rows]) => ({
                                     courseName,
-                                    submissions: submissions.sort((a, b) =>
+                                    submissions: rows.sort((a, b) =>
                                         a.studentName.localeCompare(b.studentName)
                                     ),
                                 }));
@@ -173,23 +225,23 @@ export function AdminSubmissionsView() {
             };
         });
     }, [filtered]);
+
     const handleRowClick = (submissionId: number) => {
         router.push(`/submissions/${submissionId}`);
     };
+
     const columns = [
         {
             key: "studentId",
             header: "ID",
             width: "13%",
             truncate: true,
-            render: (s: AdminSubmission) => {
-                const academicId = resolveStudentAcademicId(s.studentId);
-                return academicId ? (
-                    <span className="text-sm text-gray-900" title={academicId}>{academicId}</span>
+            render: (s: SubmissionRow) =>
+                s.studentAcademicId ? (
+                    <span className="text-sm text-gray-900" title={s.studentAcademicId}>{s.studentAcademicId}</span>
                 ) : (
                     <span className="text-gray-400">—</span>
-                );
-            },
+                ),
         },
         {
             key: "studentName",
@@ -207,14 +259,14 @@ export function AdminSubmissionsView() {
             key: "status",
             header: "Status",
             width: "10%",
-            render: (s: AdminSubmission) => <StatusBadge status={s.status} />,
+            render: (s: SubmissionRow) => <StatusBadge status={s.status} />,
         },
         {
             key: "marks",
             header: "Marks",
             className: "text-center",
             width: "8%",
-            render: (s: AdminSubmission) =>
+            render: (s: SubmissionRow) =>
                 s.marks !== null ? (
                     <span className="font-medium text-gray-900">{s.marks}</span>
                 ) : (
@@ -225,7 +277,7 @@ export function AdminSubmissionsView() {
             key: "submittedAt",
             header: "Submitted",
             width: "12%",
-            render: (s: AdminSubmission) =>
+            render: (s: SubmissionRow) =>
                 s.submittedAt ? s.submittedAt : <span className="italic text-gray-400">Not yet</span>,
         },
         {
@@ -233,7 +285,7 @@ export function AdminSubmissionsView() {
             header: "Feedback",
             width: "17%",
             truncate: true,
-            render: (s: AdminSubmission) =>
+            render: (s: SubmissionRow) =>
                 s.feedback ? (
                     <span className="text-sm text-gray-700">{s.feedback}</span>
                 ) : (
@@ -241,16 +293,30 @@ export function AdminSubmissionsView() {
                 ),
         },
     ];
+
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
+
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">{error}</div>
+            )}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">All Submissions</h1>
                     <p className="mt-1 text-sm text-gray-600">
-                        {adminSubmissions.length} submissions total • {filtered.length} shown
+                        {submissions.length} submissions total • {filtered.length} shown
                     </p>
                 </div>
             </div>
+
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -290,6 +356,7 @@ export function AdminSubmissionsView() {
                     )}
                 </div>
             </div>
+
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
@@ -350,12 +417,14 @@ export function AdminSubmissionsView() {
                     </label>
                 </div>
             )}
+
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
                         <p className="text-sm text-gray-600">No submissions match your filters.</p>
                     </div>
                 )}
+
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
@@ -369,6 +438,7 @@ export function AdminSubmissionsView() {
                                 {pg.count} submission{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
+
                         {pg.departments.map((dept) => (
                             <div key={dept.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -382,6 +452,7 @@ export function AdminSubmissionsView() {
                                         {dept.count} submission{dept.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
+
                                 <div className="mt-4 space-y-6">
                                     {dept.sessions.map((sess) => (
                                         <div key={sess.session}>
@@ -394,6 +465,7 @@ export function AdminSubmissionsView() {
                                                     {sess.count} submission{sess.count === 1 ? "" : "s"}
                                                 </span>
                                             </div>
+
                                             <div className="space-y-5">
                                                 {sess.courses.map((course) => (
                                                     <div key={course.courseName}>

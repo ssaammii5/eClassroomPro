@@ -17,12 +17,13 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWor
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Assignment> Assignments => Set<Assignment>();
     public DbSet<Submission> Submissions => Set<Submission>();
+    public DbSet<SubmissionAttachment> SubmissionAttachments => Set<SubmissionAttachment>();
+    public DbSet<SubmissionActivity> SubmissionActivities => Set<SubmissionActivity>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<AcademicProgram> AcademicPrograms => Set<AcademicProgram>();
     public DbSet<AcademicDepartment> AcademicDepartments => Set<AcademicDepartment>();
     public DbSet<AcademicSemester> AcademicSemesters => Set<AcademicSemester>();
-
     public DbSet<StudentDetails> StudentDetails => Set<StudentDetails>();
     public DbSet<TeacherDetails> TeacherDetails => Set<TeacherDetails>();
 

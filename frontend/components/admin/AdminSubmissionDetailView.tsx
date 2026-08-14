@@ -1,4 +1,5 @@
 "use client";
+
 import type { ReactNode } from "react";
 import {
     ArrowLeft,
@@ -17,17 +18,39 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { initialOf } from "@/lib/schemas";
-import type { AdminSubmission } from "@/lib/adminData";
-import { adminCourses, adminUsers } from "@/lib/adminData";
-import type { SubmissionAttachment } from "@/lib/submissionDetails";
-import { getAssignmentForSubmission, getSubmissionDetail } from "@/lib/submissionDetails";
+import type { SubmissionDto } from "@/lib/api/submissions";
 import { StatusBadge } from "./StatusBadge";
 
-interface AdminSubmissionDetailViewProps {
-    submission: AdminSubmission;
+interface AttachmentItem {
+    id: number;
+    fileName: string;
+    fileType: string;
+    fileSize: string;
+    uploadedAt: string;
+    kind: "file" | "link";
+    url?: string;
 }
 
-function attachmentEmoji(att: SubmissionAttachment): string {
+interface ActivityItem {
+    id: number;
+    action: string;
+    actor: string;
+    timestamp: string;
+}
+
+function formatTime(iso: string): string {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatTimestamp(iso: string): string {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return `${date} ${time}`;
+}
+
+function attachmentEmoji(att: AttachmentItem): string {
     if (att.kind === "link") return "🔗";
     const ext = att.fileName.split(".").pop()?.toLowerCase() ?? "";
     if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(ext)) return "🖼️";
@@ -42,26 +65,48 @@ function attachmentEmoji(att: SubmissionAttachment): string {
     return "📄";
 }
 
+interface AdminSubmissionDetailViewProps {
+    submission: SubmissionDto;
+}
+
 export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailViewProps) {
     const router = useRouter();
-    const detail = getSubmissionDetail(submission.id);
-    const assignment = getAssignmentForSubmission(submission);
-    const course = adminCourses.find((c) => c.id === submission.courseId);
-    const student = adminUsers.find((u) => u.id === submission.studentId);
 
-    const maxMarks = assignment?.maxMarks ?? 100;
-    const notSubmitted = !submission.submittedAt;
+    const notSubmitted = !submission.submittedAtUtc;
+    const displayStatus = notSubmitted ? "Pending" : submission.status;
+    const maxMarks = submission.maxMarks;
 
-    const studentEmail = student?.email ?? "—";
-    const studentAcademicId = student?.studentDetails?.studentId ?? "—";
-    const studentDepartment = student?.studentDetails?.department ?? "—";
-    const studentProgram = student?.studentDetails?.currentProgram ?? "—";
+    const studentEmail = submission.studentEmail ?? "—";
+    const studentAcademicId = submission.studentAcademicId ?? "—";
+    const studentDepartment = submission.studentDepartment ?? "—";
+    const studentProgram = submission.studentProgram ?? "—";
+    const courseSession = submission.session ?? "—";
 
-    const attachments = detail?.attachments ?? [];
-    const activity = detail?.activity ?? [];
-    const answer = detail?.answer ?? "";
+    const answer = submission.answer;
+    const isLate = submission.isLate;
+    const isGraded = !notSubmitted && submission.status === "Graded" && submission.marks !== null;
 
-    const isGraded = submission.status === "Graded" && submission.marks !== null;
+    const submittedDate = submission.submittedAtUtc ? submission.submittedAtUtc.split("T")[0] : "";
+    const submittedAtTime = submission.submittedAtUtc ? formatTime(submission.submittedAtUtc) : "";
+    const gradedBy = submission.gradedByName ?? null;
+    const gradedAt = submission.gradedAtUtc ? submission.gradedAtUtc.split("T")[0] : null;
+
+    const attachments: AttachmentItem[] = submission.attachments.map((a) => ({
+        id: a.id,
+        fileName: a.fileName,
+        fileType: a.fileType,
+        fileSize: a.fileSize,
+        uploadedAt: a.uploadedAtUtc.split("T")[0],
+        kind: a.kind as "file" | "link",
+        url: a.url ?? undefined,
+    }));
+
+    const activity: ActivityItem[] = submission.activities.map((x) => ({
+        id: x.id,
+        action: x.action,
+        actor: x.actorName,
+        timestamp: formatTimestamp(x.timestampUtc),
+    }));
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-white">
@@ -94,13 +139,13 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        {detail?.isLate && !notSubmitted && (
+                        {isLate && !notSubmitted && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-[#fce8e6] px-3 py-1 text-xs font-medium text-[#c5221f]">
                                 <Clock className="h-3.5 w-3.5" />
                                 Late
                             </span>
                         )}
-                        <StatusBadge status={submission.status} />
+                        <StatusBadge status={displayStatus} />
                     </div>
                 </div>
 
@@ -185,7 +230,6 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                         {/* Grading — read only */}
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Grading</h2>
-
                             {notSubmitted ? (
                                 <p className="mt-3 text-sm text-gray-600">
                                     Waiting for the student to submit before grading.
@@ -199,14 +243,12 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                                             <span className="ml-1 text-base font-normal text-gray-500">/ {maxMarks}</span>
                                         </p>
                                     </div>
-
                                     {submission.feedback && (
                                         <div className="mt-4 border-t border-gray-100 pt-4">
                                             <p className="text-xs text-gray-500">Feedback</p>
                                             <p className="mt-1 text-sm leading-6 text-gray-800">{submission.feedback}</p>
                                         </div>
                                     )}
-
                                     <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#e6f4ea] px-4 py-3">
                                         <GraduationCap className="h-4 w-4 text-[#137333]" />
                                         <span className="text-sm font-medium text-[#137333]">
@@ -231,21 +273,21 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Submission Info</h2>
                             <dl className="mt-4 space-y-3 text-sm">
-                                <InfoRow icon={<ClipboardList className="h-4 w-4" />} label="Assignment" value={submission.assignmentTitle} />
-                                <InfoRow icon={<BookOpen className="h-4 w-4" />} label="Course" value={submission.courseName} />
-                                <InfoRow icon={<CalendarRange className="h-4 w-4" />} label="Session" value={course?.session ?? "—"} />
+                                <InfoRow icon={<ClipboardList className="h-4 w-4" />} label="Assignment" value={submission.assignmentTitle ?? "—"} />
+                                <InfoRow icon={<BookOpen className="h-4 w-4" />} label="Course" value={submission.courseName ?? "—"} />
+                                <InfoRow icon={<CalendarRange className="h-4 w-4" />} label="Session" value={courseSession} />
                                 <InfoRow
                                     icon={<Clock className="h-4 w-4" />}
                                     label="Submitted"
                                     value={notSubmitted
                                         ? "Not submitted"
-                                        : `${submission.submittedAt}${detail?.submittedAtTime ? ` at ${detail.submittedAtTime}` : ""}`}
+                                        : `${submittedDate}${submittedAtTime ? ` at ${submittedAtTime}` : ""}`}
                                 />
-                                {detail?.gradedBy && (
+                                {gradedBy && (
                                     <InfoRow
                                         icon={<GraduationCap className="h-4 w-4" />}
                                         label="Graded By"
-                                        value={`${detail.gradedBy}${detail.gradedAt ? ` (${detail.gradedAt})` : ""}`}
+                                        value={`${gradedBy}${gradedAt ? ` (${gradedAt})` : ""}`}
                                     />
                                 )}
                             </dl>
@@ -255,15 +297,15 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Student Info</h2>
                             <dl className="mt-4 space-y-3 text-sm">
-                                <InfoRow icon={<UserRound className="h-4 w-4" />} label="Name" value={submission.studentName} />
+                                <InfoRow icon={<UserRound className="h-4 w-4" />} label="Name" value={submission.studentName ?? "—"} />
                                 <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={studentEmail} />
                                 <InfoRow icon={<ClipboardList className="h-4 w-4" />} label="Student ID" value={studentAcademicId} />
                                 <InfoRow icon={<Building2 className="h-4 w-4" />} label="Department" value={studentDepartment} />
                                 <InfoRow icon={<GraduationCap className="h-4 w-4" />} label="Program" value={studentProgram} />
                             </dl>
-                            {student?.email && (
+                            {submission.studentEmail && (
                                 <a
-                                    href={`mailto:${student.email}`}
+                                    href={`mailto:${submission.studentEmail}`}
                                     className="mt-5 flex cursor-pointer items-center justify-center gap-2 rounded-full border border-gray-400 px-5 py-2.5 text-sm font-medium text-[#1a73e8] hover:bg-blue-50"
                                 >
                                     <Mail className="h-4 w-4" />
@@ -290,7 +332,7 @@ function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value
     );
 }
 
-function AttachmentRow({ attachment }: { attachment: SubmissionAttachment }) {
+function AttachmentRow({ attachment }: { attachment: AttachmentItem }) {
     return (
         <div className="flex items-center gap-4 px-6 py-4">
             <span className="text-3xl">{attachmentEmoji(attachment)}</span>

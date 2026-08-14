@@ -11,12 +11,13 @@ public interface IApplicationDbContext
     DbSet<Enrollment> Enrollments { get; }
     DbSet<Assignment> Assignments { get; }
     DbSet<Submission> Submissions { get; }
+    DbSet<SubmissionAttachment> SubmissionAttachments { get; }
+    DbSet<SubmissionActivity> SubmissionActivities { get; }
     DbSet<AppSetting> AppSettings { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DbSet<AcademicProgram> AcademicPrograms { get; }
     DbSet<AcademicDepartment> AcademicDepartments { get; }
     DbSet<AcademicSemester> AcademicSemesters { get; }
-
     DbSet<StudentDetails> StudentDetails { get; }
     DbSet<TeacherDetails> TeacherDetails { get; }
 
