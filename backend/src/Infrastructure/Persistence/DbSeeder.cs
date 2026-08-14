@@ -9,6 +9,10 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context)
     {
+        // Phase 7: app settings are seeded idempotently on every startup so they
+        // also populate databases that were created before this feature existed.
+        await EnsureAppSettingsAsync(context);
+
         if (await context.Users.AnyAsync())
         {
             return;
@@ -69,7 +73,6 @@ public static class DbSeeder
         context.StudentDetails.Add(studentDetails);
         await context.SaveChangesAsync();
 
-        // Academic reference data
         var programs = new[]
         {
             new AcademicProgram { Name = "Undergraduate", Description = "Bachelor's degree programs (4 years)" },
@@ -162,11 +165,45 @@ public static class DbSeeder
         };
 
         context.Submissions.Add(submission);
+        await context.SaveChangesAsync();
+    }
 
-        var schoolNameSetting = new AppSetting { Key = "SchoolName", Value = "eClassroomPro School" };
-        var lateSubmissionSetting = new AppSetting { Key = "AllowLateSubmissions", Value = "false" };
+    private static async Task EnsureAppSettingsAsync(ApplicationDbContext context)
+    {
+        var defaults = new (string Key, string Value, string Description, string Category)[]
+        {
+            ("site_name", "eClassroomPro", "The display name of the application", "General"),
+            ("max_file_size_mb", "10", "Maximum file upload size in MB", "General"),
+            ("allowed_file_types", "pdf,doc,docx,zip,txt", "Comma-separated list of allowed file types", "General"),
 
-        context.AppSettings.AddRange(schoolNameSetting, lateSubmissionSetting);
+            ("email_notifications_enabled", "true", "Enable email notifications for assignments", "Notifications"),
+            ("due_date_reminder_hours", "24", "Hours before deadline to send reminder", "Notifications"),
+            ("grade_notification_enabled", "true", "Notify students when graded", "Notifications"),
+
+            ("max_marks_default", "100", "Default maximum marks for assignments", "Grading"),
+            ("allow_late_submission", "false", "Allow submissions after deadline", "Grading"),
+            ("late_submission_penalty_percent", "10", "Percentage penalty for late submissions", "Grading"),
+
+            ("session_timeout_minutes", "60", "Session timeout in minutes", "Security"),
+            ("password_min_length", "8", "Minimum password length", "Security"),
+            ("enable_two_factor_auth", "false", "Require 2FA for all users", "Security"),
+        };
+
+        foreach (var d in defaults)
+        {
+            var exists = await context.AppSettings.AnyAsync(x => x.Key == d.Key);
+            if (!exists)
+            {
+                context.AppSettings.Add(new AppSetting
+                {
+                    Key = d.Key,
+                    Value = d.Value,
+                    Description = d.Description,
+                    Category = d.Category
+                });
+            }
+        }
+
         await context.SaveChangesAsync();
     }
 }

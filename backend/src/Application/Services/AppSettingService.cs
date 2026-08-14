@@ -31,7 +31,9 @@ public class AppSettingService
             .Select(x => new AppSettingDto
             {
                 Key = x.Key,
-                Value = x.Value
+                Value = x.Value,
+                Description = x.Description,
+                Category = x.Category
             })
             .ToList();
     }
@@ -46,7 +48,6 @@ public class AppSettingService
         }
 
         var key = dto.Key.Trim();
-
         var setting = await _appSettingRepository.GetByKeyAsync(key, cancellationToken);
 
         if (setting is null)
@@ -54,7 +55,9 @@ public class AppSettingService
             setting = new AppSetting
             {
                 Key = key,
-                Value = dto.Value.Trim()
+                Value = dto.Value.Trim(),
+                Description = dto.Description?.Trim() ?? string.Empty,
+                Category = string.IsNullOrWhiteSpace(dto.Category) ? "General" : dto.Category.Trim()
             };
 
             await _appSettingRepository.AddAsync(setting, cancellationToken);
@@ -62,6 +65,17 @@ public class AppSettingService
         else
         {
             setting.Value = dto.Value.Trim();
+
+            if (dto.Description is not null)
+            {
+                setting.Description = dto.Description.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.Category))
+            {
+                setting.Category = dto.Category.Trim();
+            }
+
             setting.UpdatedAtUtc = DateTime.UtcNow;
             _appSettingRepository.Update(setting);
         }
@@ -71,7 +85,9 @@ public class AppSettingService
         return new AppSettingDto
         {
             Key = setting.Key,
-            Value = setting.Value
+            Value = setting.Value,
+            Description = setting.Description,
+            Category = setting.Category
         };
     }
 

@@ -20,5 +20,13 @@ public class AppSettingConfiguration : IEntityTypeConfiguration<AppSetting>
         builder.Property(x => x.Value)
             .HasMaxLength(2000)
             .IsRequired();
+
+        builder.Property(x => x.Description)
+            .HasMaxLength(500)
+            .IsRequired();
+
+        builder.Property(x => x.Category)
+            .HasMaxLength(100)
+            .IsRequired();
     }
 }
