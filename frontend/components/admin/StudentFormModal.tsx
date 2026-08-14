@@ -1,7 +1,7 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import type { AdminUser, StudentDetails, StudentProgramType } from "@/lib/adminData";
+import { academicSemesters } from "@/lib/adminData";
 import { COUNTRIES } from "@/components/settings/constants";
 import { Field, SelectField } from "@/components/settings/FormFields";
 import { X } from "lucide-react";
@@ -14,15 +14,19 @@ const PROGRAM_TYPES: StudentProgramType[] = [
     "PhD",
 ];
 
-const SEMESTER_PERIODS = ["January-June", "July-December"];
-
-// Dynamic year range: 2000 to current year + 1 (auto-updates every year)
-const START_YEAR = 2000;
-const END_YEAR = new Date().getFullYear() + 1;
-const YEAR_OPTIONS = Array.from(
-    { length: END_YEAR - START_YEAR + 1 },
-    (_, i) => String(START_YEAR + i)
-);
+const SEMESTER_OPTIONS = academicSemesters
+    .slice()
+    .sort((a, b) => {
+        const rankOf = (name: string) => {
+            const [period, yearStr] = name.split("/");
+            const year = Number(yearStr);
+            if (!Number.isFinite(year)) return 0;
+            const periodIndex = period === "July-December" ? 1 : 0;
+            return year * 2 + periodIndex;
+        };
+        return rankOf(b.name) - rankOf(a.name);
+    })
+    .map((s) => s.name);
 
 const EMPTY_DETAILS: StudentDetails = {
     fathersName: "",
@@ -53,27 +57,16 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
     const [isActive, setIsActive] = useState(true);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Separate state for the two semester dropdowns
-    const [semesterPeriod, setSemesterPeriod] = useState("");
-    const [semesterYear, setSemesterYear] = useState("");
-
     useEffect(() => {
         if (open) {
             setName(user?.name ?? "");
             setEmail(user?.email ?? "");
             setIsActive(user?.isActive ?? true);
             setErrors({});
-
             if (user?.studentDetails) {
                 setDetails(user.studentDetails);
-                // Parse existing semesterSession into period and year
-                const parts = user.studentDetails.semesterSession?.split("/") ?? [];
-                setSemesterPeriod(parts[0] ?? "");
-                setSemesterYear(parts[1] ?? "");
             } else {
                 setDetails(EMPTY_DETAILS);
-                setSemesterPeriod("");
-                setSemesterYear("");
             }
         }
     }, [open, user]);
@@ -99,16 +92,6 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         clearError(key as string);
     };
 
-    const handleSemesterPeriodChange = (value: string) => {
-        setSemesterPeriod(value);
-        clearError("semesterSession");
-    };
-
-    const handleSemesterYearChange = (value: string) => {
-        setSemesterYear(value);
-        clearError("semesterSession");
-    };
-
     const validate = () => {
         const next: Record<string, string> = {};
         if (!name.trim()) next.name = "Full name is required.";
@@ -116,7 +99,7 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) next.email = "Enter a valid email.";
         if (!details.studentId.trim()) next.studentId = "Student ID is required.";
         if (!details.address.country) next.country = "Country is required.";
-        if (!semesterPeriod || !semesterYear) next.semesterSession = "Semester period and year are required.";
+        if (!details.semesterSession) next.semesterSession = "Semester is required.";
         return next;
     };
 
@@ -125,18 +108,12 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
         setErrors(errs);
         if (Object.keys(errs).length > 0) return;
 
-        // Combine period and year into the stored format
-        const combinedSemesterSession = `${semesterPeriod}/${semesterYear}`;
-
         onSave({
             name: name.trim(),
             email: email.trim(),
             role: "Student",
             isActive,
-            studentDetails: {
-                ...details,
-                semesterSession: combinedSemesterSession,
-            },
+            studentDetails: { ...details },
         });
     };
 
@@ -230,38 +207,16 @@ export function StudentFormModal({ open, user, onSave, onClose }: StudentFormMod
                                 placeholder="Select program type"
                             />
                             <Field label="Session" value={details.session} onChange={(v) => setField("session", v)} />
-
-                            {/* Semester Period Dropdown */}
                             <SelectField
-                                label="Semester Period"
+                                label="Semester"
                                 required
-                                value={semesterPeriod}
-                                onChange={handleSemesterPeriodChange}
-                                options={SEMESTER_PERIODS}
+                                value={details.semesterSession}
+                                onChange={(v) => setField("semesterSession", v)}
+                                options={SEMESTER_OPTIONS}
                                 error={errors.semesterSession}
-                                placeholder="Select semester period"
-                            />
-
-                            {/* Year Dropdown */}
-                            <SelectField
-                                label="Year"
-                                required
-                                value={semesterYear}
-                                onChange={handleSemesterYearChange}
-                                options={YEAR_OPTIONS}
-                                error={errors.semesterSession ? " " : undefined}
-                                placeholder="Select year"
+                                placeholder="Select semester"
                             />
                         </div>
-                        {errors.semesterSession && (
-                            <p className="mt-2 text-sm text-[#c5221f]">{errors.semesterSession}</p>
-                        )}
-                        {/* Preview of combined value */}
-                        {semesterPeriod && semesterYear && (
-                            <p className="mt-3 text-xs text-gray-500">
-                                Stored as: <span className="font-medium text-gray-800">{semesterPeriod}/{semesterYear}</span>
-                            </p>
-                        )}
                     </section>
 
                     {/* Location */}
