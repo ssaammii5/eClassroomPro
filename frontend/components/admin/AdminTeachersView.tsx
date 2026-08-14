@@ -1,13 +1,14 @@
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
 import {
     BookOpen,
+    Mail,
     Pencil,
     Plus,
     Search,
     SlidersHorizontal,
     Trash2,
+    X,
 } from "lucide-react";
 import type { AdminUser, TeacherDesignation } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
@@ -15,7 +16,6 @@ import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { TeacherFormModal } from "./TeacherFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
-
 const DESIGNATION_ORDER: TeacherDesignation[] = [
     "Professor",
     "Associate Professor",
@@ -23,28 +23,23 @@ const DESIGNATION_ORDER: TeacherDesignation[] = [
     "Senior Lecturer",
     "Lecturer",
 ];
-
 const DESIGNATION_RANK: Record<string, number> = Object.fromEntries(
     DESIGNATION_ORDER.map((d, i) => [d, i])
 );
-
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.teacherDetails;
     return !!d && !!d.designation && !!d.department?.trim();
 }
-
 interface DesignationGroup {
     name: string;
     teachers: AdminUser[];
     count: number;
 }
-
 interface DeptGroup {
     name: string;
     designations: DesignationGroup[];
     count: number;
 }
-
 export function AdminTeachersView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Teacher")
@@ -57,13 +52,12 @@ export function AdminTeachersView() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
-
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const departmentOptions = useMemo(() => {
         return Array.from(
             new Set(users.map((u) => u.teacherDetails?.department?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => a.localeCompare(b));
     }, [users]);
-
     const designationOptions = useMemo<TeacherDesignation[]>(() => {
         const base =
             departmentFilter === "all"
@@ -81,13 +75,11 @@ export function AdminTeachersView() {
             return ia - ib || a.localeCompare(b);
         });
     }, [users, departmentFilter]);
-
     useEffect(() => {
         if (designationFilter !== "all" && !designationOptions.includes(designationFilter as TeacherDesignation)) {
             setDesignationFilter("all");
         }
     }, [designationOptions, designationFilter]);
-
     const filtered = useMemo(() => {
         return users.filter((u) => {
             const d = u.teacherDetails;
@@ -105,17 +97,14 @@ export function AdminTeachersView() {
             return matchSearch && matchStatus && matchDept && matchDesignation;
         });
     }, [users, search, statusFilter, departmentFilter, designationFilter]);
-
     const activeFilterCount = [departmentFilter, designationFilter, statusFilter].filter(
         (f) => f !== "all"
     ).length;
-
     const clearFilters = () => {
         setDepartmentFilter("all");
         setDesignationFilter("all");
         setStatusFilter("all");
     };
-
     const departmentGroups = useMemo<DeptGroup[]>(() => {
         const map = new Map<string, Map<string, AdminUser[]>>();
         for (const u of filtered) {
@@ -149,7 +138,6 @@ export function AdminTeachersView() {
             };
         });
     }, [filtered]);
-
     const uncategorized = useMemo(
         () =>
             filtered
@@ -157,7 +145,6 @@ export function AdminTeachersView() {
                 .sort((a, b) => a.name.localeCompare(b.name)),
         [filtered]
     );
-
     const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
         if (editingUser) {
             setUsers((prev) =>
@@ -171,18 +158,18 @@ export function AdminTeachersView() {
                 createdAt: new Date().toISOString().split("T")[0],
             };
             setUsers((prev) => [...prev, newUser]);
+            setSuccessMessage(`Teacher "${data.name}" created successfully. A password setup link has been sent to ${data.email}.`);
+            window.setTimeout(() => setSuccessMessage(null), 6000);
         }
         setModalOpen(false);
         setEditingUser(null);
     };
-
     const handleDelete = () => {
         if (deleteTarget) {
             setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
             setDeleteTarget(null);
         }
     };
-
     const columns = [
         {
             key: "name",
@@ -257,9 +244,24 @@ export function AdminTeachersView() {
             ),
         },
     ];
-
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
+            {/* Success Banner */}
+            {successMessage && (
+                <div className="fixed inset-x-0 top-20 z-50 flex justify-center px-4">
+                    <div className="flex items-center gap-3 rounded-lg bg-[#e6f4ea] px-5 py-3.5 shadow-lg border border-[#ceead6]">
+                        <Mail className="h-5 w-5 shrink-0 text-[#137333]" />
+                        <span className="text-sm font-medium text-[#137333]">{successMessage}</span>
+                        <button
+                            type="button"
+                            onClick={() => setSuccessMessage(null)}
+                            className="ml-2 cursor-pointer rounded p-1 text-[#137333] hover:bg-[#ceead6]"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -277,8 +279,7 @@ export function AdminTeachersView() {
                     Add Teacher
                 </button>
             </div>
-
-            {/* Filters */}
+            {/* Search and Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -318,8 +319,7 @@ export function AdminTeachersView() {
                     )}
                 </div>
             </div>
-
-            {/* Advanced Filter Panel */}
+            {/* Advanced Filters Panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <label className="block">
@@ -362,15 +362,13 @@ export function AdminTeachersView() {
                     </label>
                 </div>
             )}
-
-            {/* Content */}
+            {/* Teacher Groups */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
                         <p className="text-sm text-gray-600">No teachers match your filters.</p>
                     </div>
                 )}
-
                 {/* Department Groups */}
                 {departmentGroups.map((dept) => (
                     <section key={dept.name}>
@@ -386,7 +384,6 @@ export function AdminTeachersView() {
                                 {dept.count} teacher{dept.count === 1 ? "" : "s"}
                             </span>
                         </div>
-
                         {/* Designation Groups */}
                         {dept.designations.map((desg) => (
                             <div key={desg.name} className="mt-6">
@@ -410,7 +407,6 @@ export function AdminTeachersView() {
                         ))}
                     </section>
                 ))}
-
                 {/* Uncategorized */}
                 {uncategorized.length > 0 && (
                     <section>
@@ -436,7 +432,6 @@ export function AdminTeachersView() {
                     </section>
                 )}
             </div>
-
             {/* Modals */}
             <TeacherFormModal
                 open={modalOpen}

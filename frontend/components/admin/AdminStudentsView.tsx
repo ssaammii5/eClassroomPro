@@ -1,8 +1,6 @@
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
-
+import { GraduationCap, Pencil, Plus, Search, SlidersHorizontal, Trash2, Mail, X } from "lucide-react";
 import type { AdminUser } from "@/lib/adminData";
 import { adminUsers } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
@@ -10,16 +8,9 @@ import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
 import { StudentFormModal } from "./StudentFormModal";
 import { ConfirmDialog } from "./ConfirmDialog";
-
 const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
     PROGRAM_TYPES.map((p, i) => [p, i])
 );
-
-/**
- * Converts a semester/session key like "July-December/2026" into a numeric rank
- * so sessions can be sorted chronologically:
- * July-December/2026 > January-June/2026 > July-December/2025 > ...
- */
 function sessionRank(key: string): number {
     const [period, yearStr] = key.split("/");
     const year = Number(yearStr);
@@ -27,7 +18,6 @@ function sessionRank(key: string): number {
     const periodIndex = period === "July-December" ? 1 : 0;
     return year * 2 + periodIndex;
 }
-
 function hasFullDetails(u: AdminUser): boolean {
     const d = u.studentDetails;
     return (
@@ -37,26 +27,21 @@ function hasFullDetails(u: AdminUser): boolean {
         !!d.semesterSession?.trim()
     );
 }
-
 interface SemesterSessionGroup {
     key: string;
     students: AdminUser[];
 }
-
 interface DeptGroup {
     name: string;
     groups: SemesterSessionGroup[];
     count: number;
 }
-
 interface ProgramGroup {
     name: string;
     depts: DeptGroup[];
     count: number;
 }
-
 type SessionSortOrder = "newest" | "oldest";
-
 export function AdminStudentsView() {
     const [users, setUsers] = useState<AdminUser[]>(
         adminUsers.filter((u) => u.role === "Student")
@@ -71,7 +56,7 @@ export function AdminStudentsView() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
-
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const departmentOptions = useMemo(() => {
         const base =
             programFilter === "all"
@@ -81,7 +66,6 @@ export function AdminStudentsView() {
             new Set(base.map((u) => u.studentDetails?.department?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => a.localeCompare(b));
     }, [users, programFilter]);
-
     const semesterSessionOptions = useMemo(() => {
         const base =
             programFilter === "all"
@@ -91,19 +75,16 @@ export function AdminStudentsView() {
             new Set(base.map((u) => u.studentDetails?.semesterSession?.trim() ?? "").filter(Boolean))
         ).sort((a, b) => sessionRank(b) - sessionRank(a));
     }, [users, programFilter]);
-
     useEffect(() => {
         if (departmentFilter !== "all" && !departmentOptions.includes(departmentFilter)) {
             setDepartmentFilter("all");
         }
     }, [departmentOptions, departmentFilter]);
-
     useEffect(() => {
         if (semesterSessionFilter !== "all" && !semesterSessionOptions.includes(semesterSessionFilter)) {
             setSemesterSessionFilter("all");
         }
     }, [semesterSessionOptions, semesterSessionFilter]);
-
     const filtered = useMemo(() => {
         return users.filter((u) => {
             const d = u.studentDetails;
@@ -124,30 +105,25 @@ export function AdminStudentsView() {
             );
         });
     }, [users, search, statusFilter, programFilter, departmentFilter, semesterSessionFilter]);
-
     const activeFilterCount = [
         programFilter,
         departmentFilter,
         semesterSessionFilter,
         statusFilter,
     ].filter((f) => f !== "all").length;
-
     const clearFilters = () => {
         setProgramFilter("all");
         setDepartmentFilter("all");
         setSemesterSessionFilter("all");
         setStatusFilter("all");
     };
-
     const programGroups = useMemo<ProgramGroup[]>(() => {
         const map = new Map<string, Map<string, Map<string, AdminUser[]>>>();
-
         for (const u of filtered) {
             if (!hasFullDetails(u)) continue;
             const d = u.studentDetails!;
             const dept = d.department.trim();
             const ssKey = d.semesterSession.trim();
-
             if (!map.has(d.currentProgram)) map.set(d.currentProgram, new Map());
             const deptMap = map.get(d.currentProgram)!;
             if (!deptMap.has(dept)) deptMap.set(dept, new Map());
@@ -155,13 +131,11 @@ export function AdminStudentsView() {
             if (!ssMap.has(ssKey)) ssMap.set(ssKey, []);
             ssMap.get(ssKey)!.push(u);
         }
-
         const programs = Array.from(map.keys()).sort((a, b) => {
             const ia = PROGRAM_ORDER[a] ?? 99;
             const ib = PROGRAM_ORDER[b] ?? 99;
             return ia - ib || a.localeCompare(b);
         });
-
         return programs.map((program) => {
             const deptMap = map.get(program)!;
             const depts: DeptGroup[] = Array.from(deptMap.keys())
@@ -184,7 +158,6 @@ export function AdminStudentsView() {
                         count: groups.reduce((s, g) => s + g.students.length, 0),
                     };
                 });
-
             return {
                 name: program,
                 depts,
@@ -192,7 +165,6 @@ export function AdminStudentsView() {
             };
         });
     }, [filtered, sessionSort]);
-
     const uncategorized = useMemo(
         () =>
             filtered
@@ -200,7 +172,6 @@ export function AdminStudentsView() {
                 .sort((a, b) => a.name.localeCompare(b.name)),
         [filtered]
     );
-
     const handleSave = (data: Omit<AdminUser, "id" | "createdAt">) => {
         if (editingUser) {
             setUsers((prev) =>
@@ -214,18 +185,18 @@ export function AdminStudentsView() {
                 createdAt: new Date().toISOString().split("T")[0],
             };
             setUsers((prev) => [...prev, newUser]);
+            setSuccessMessage(`Student "${data.name}" created successfully. A password setup link has been sent to ${data.email}.`);
+            window.setTimeout(() => setSuccessMessage(null), 6000);
         }
         setModalOpen(false);
         setEditingUser(null);
     };
-
     const handleDelete = () => {
         if (deleteTarget) {
             setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
             setDeleteTarget(null);
         }
     };
-
     const columns = [
         {
             key: "name",
@@ -300,9 +271,24 @@ export function AdminStudentsView() {
             ),
         },
     ];
-
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
+            {/* Success Banner */}
+            {successMessage && (
+                <div className="fixed inset-x-0 top-20 z-50 flex justify-center px-4">
+                    <div className="flex items-center gap-3 rounded-lg bg-[#e6f4ea] px-5 py-3.5 shadow-lg border border-[#ceead6]">
+                        <Mail className="h-5 w-5 shrink-0 text-[#137333]" />
+                        <span className="text-sm font-medium text-[#137333]">{successMessage}</span>
+                        <button
+                            type="button"
+                            onClick={() => setSuccessMessage(null)}
+                            className="ml-2 cursor-pointer rounded p-1 text-[#137333] hover:bg-[#ceead6]"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -320,8 +306,7 @@ export function AdminStudentsView() {
                     Add Student
                 </button>
             </div>
-
-            {/* Search + filter toggle + session sort */}
+            {/* Search and Filters */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -333,9 +318,7 @@ export function AdminStudentsView() {
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
-
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Semester/session sort control */}
                     <label className="flex items-center gap-2">
                         <span className="whitespace-nowrap text-sm font-medium text-gray-700">
                             Semester order
@@ -349,13 +332,12 @@ export function AdminStudentsView() {
                             <option value="oldest">Oldest first</option>
                         </select>
                     </label>
-
                     <button
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
                         className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                                ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
                             }`}
                     >
                         <SlidersHorizontal className="h-4 w-4" />
@@ -377,8 +359,7 @@ export function AdminStudentsView() {
                     )}
                 </div>
             </div>
-
-            {/* Advanced filters panel */}
+            {/* Advanced Filters Panel */}
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
@@ -434,19 +415,17 @@ export function AdminStudentsView() {
                     </label>
                 </div>
             )}
-
-            {/* Content */}
+            {/* Student Groups */}
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
                         <p className="text-sm text-gray-600">No students match your filters.</p>
                     </div>
                 )}
-
-                {/* Categorized groups */}
+                {/* Program Groups */}
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
-                        {/* Program header */}
+                        {/* Program Header */}
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6] sm:h-10 sm:w-10">
@@ -458,7 +437,6 @@ export function AdminStudentsView() {
                                 {pg.count} student{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
-
                         {/* Departments */}
                         {pg.depts.map((dept) => (
                             <div key={dept.name} className="mt-6">
@@ -468,8 +446,7 @@ export function AdminStudentsView() {
                                         {dept.count} student{dept.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
-
-                                {/* Semester/session groups */}
+                                {/* Sessions */}
                                 <div className="mt-4 space-y-6">
                                     {dept.groups.map((g) => (
                                         <div key={g.key}>
@@ -496,7 +473,6 @@ export function AdminStudentsView() {
                         ))}
                     </section>
                 ))}
-
                 {/* Uncategorized */}
                 {uncategorized.length > 0 && (
                     <section>
@@ -522,7 +498,6 @@ export function AdminStudentsView() {
                     </section>
                 )}
             </div>
-
             {/* Modals */}
             <StudentFormModal
                 open={modalOpen}
