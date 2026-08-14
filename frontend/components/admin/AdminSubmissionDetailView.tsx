@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import type { ReactNode } from "react";
 import {
     ArrowLeft,
@@ -14,7 +13,6 @@ import {
     Link2,
     Mail,
     Paperclip,
-    Save,
     UserRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -24,9 +22,11 @@ import { adminCourses, adminUsers } from "@/lib/adminData";
 import type { SubmissionAttachment } from "@/lib/submissionDetails";
 import { getAssignmentForSubmission, getSubmissionDetail } from "@/lib/submissionDetails";
 import { StatusBadge } from "./StatusBadge";
+
 interface AdminSubmissionDetailViewProps {
     submission: AdminSubmission;
 }
+
 function attachmentEmoji(att: SubmissionAttachment): string {
     if (att.kind === "link") return "🔗";
     const ext = att.fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -41,49 +41,32 @@ function attachmentEmoji(att: SubmissionAttachment): string {
     if (ext === "bib") return "📚";
     return "📄";
 }
+
 export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailViewProps) {
     const router = useRouter();
     const detail = getSubmissionDetail(submission.id);
     const assignment = getAssignmentForSubmission(submission);
     const course = adminCourses.find((c) => c.id === submission.courseId);
     const student = adminUsers.find((u) => u.id === submission.studentId);
+
     const maxMarks = assignment?.maxMarks ?? 100;
     const notSubmitted = !submission.submittedAt;
+
     const studentEmail = student?.email ?? "—";
     const studentAcademicId = student?.studentDetails?.studentId ?? "—";
     const studentDepartment = student?.studentDetails?.department ?? "—";
     const studentProgram = student?.studentDetails?.currentProgram ?? "—";
+
     const attachments = detail?.attachments ?? [];
     const activity = detail?.activity ?? [];
     const answer = detail?.answer ?? "";
-    const [marks, setMarks] = useState<string>(
-        submission.marks !== null ? String(submission.marks) : ""
-    );
-    const [feedback, setFeedback] = useState<string>(submission.feedback ?? "");
-    const [status, setStatus] = useState(submission.status);
-    const [savedMarks, setSavedMarks] = useState<number | null>(submission.marks);
-    const [flash, setFlash] = useState(false);
-    const [gradeError, setGradeError] = useState<string | null>(null);
-    const handleSaveGrade = () => {
-        if (notSubmitted) return;
-        const trimmed = marks.trim();
-        const parsed = trimmed === "" ? null : Number(trimmed);
-        if (parsed !== null && (Number.isNaN(parsed) || parsed < 0 || parsed > maxMarks)) {
-            setGradeError(`Enter marks between 0 and ${maxMarks}.`);
-            return;
-        }
-        setGradeError(null);
-        setSavedMarks(parsed);
-        if (parsed !== null) {
-            setStatus("Graded");
-        }
-        setFlash(true);
-        window.setTimeout(() => setFlash(false), 2200);
-    };
+
+    const isGraded = submission.status === "Graded" && submission.marks !== null;
+
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-white">
             <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-                { }
+                {/* Back */}
                 <button
                     type="button"
                     onClick={() => router.push("/submissions")}
@@ -92,7 +75,8 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                     <ArrowLeft className="h-4 w-4" />
                     Back to All Submissions
                 </button>
-                { }
+
+                {/* Header */}
                 <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-4">
                         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#7b1fa2] text-xl font-medium text-white">
@@ -116,14 +100,15 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                                 Late
                             </span>
                         )}
-                        <StatusBadge status={status} />
+                        <StatusBadge status={submission.status} />
                     </div>
                 </div>
-                { }
+
+                {/* Content */}
                 <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-                    { }
+                    {/* Left column */}
                     <div className="min-w-0 space-y-6">
-                        { }
+                        {/* Student answer */}
                         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                             <div className="flex items-center gap-2 border-b border-gray-200 bg-[#f8f9fa] px-6 py-4">
                                 <FileText className="h-5 w-5 text-gray-600" />
@@ -141,7 +126,8 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                                 )}
                             </div>
                         </section>
-                        { }
+
+                        {/* Attachments */}
                         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                             <div className="flex items-center justify-between border-b border-gray-200 bg-[#f8f9fa] px-6 py-4">
                                 <div className="flex items-center gap-2">
@@ -164,7 +150,8 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                                 </div>
                             )}
                         </section>
-                        { }
+
+                        {/* Activity */}
                         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                             <div className="flex items-center gap-2 border-b border-gray-200 bg-[#f8f9fa] px-6 py-4">
                                 <Clock className="h-5 w-5 text-gray-600" />
@@ -192,68 +179,55 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                             )}
                         </section>
                     </div>
-                    { }
+
+                    {/* Right column */}
                     <div className="space-y-6">
-                        { }
+                        {/* Grading — read only */}
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Grading</h2>
+
                             {notSubmitted ? (
                                 <p className="mt-3 text-sm text-gray-600">
                                     Waiting for the student to submit before grading.
                                 </p>
-                            ) : (
+                            ) : isGraded ? (
                                 <>
                                     <div className="mt-4">
-                                        <label className="mb-1.5 block text-sm font-medium text-gray-800">
-                                            Marks (out of {maxMarks})
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min={0}
-                                            max={maxMarks}
-                                            value={marks}
-                                            onChange={(e) => { setMarks(e.target.value); setGradeError(null); }}
-                                            placeholder="Enter marks"
-                                            className={`w-full rounded-md border px-3.5 py-2.5 text-[15px] focus:outline-none ${gradeError
-                                                ? "border-[#c5221f] focus:ring-1 focus:ring-[#c5221f]"
-                                                : "border-gray-400/80 focus:border-[#1a73e8] focus:ring-1 focus:ring-[#1a73e8]"
-                                                }`}
-                                        />
-                                        {gradeError && <span className="mt-1 block text-sm text-[#c5221f]">{gradeError}</span>}
+                                        <p className="text-xs text-gray-500">Marks</p>
+                                        <p className="mt-0.5 text-2xl font-semibold text-gray-900">
+                                            {submission.marks}
+                                            <span className="ml-1 text-base font-normal text-gray-500">/ {maxMarks}</span>
+                                        </p>
                                     </div>
-                                    <div className="mt-4">
-                                        <label className="mb-1.5 block text-sm font-medium text-gray-800">Feedback</label>
-                                        <textarea
-                                            value={feedback}
-                                            onChange={(e) => setFeedback(e.target.value)}
-                                            placeholder="Write feedback for the student..."
-                                            rows={4}
-                                            className="w-full rounded-md border border-gray-400/80 px-3.5 py-2.5 text-[15px] focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
-                                        />
+
+                                    {submission.feedback && (
+                                        <div className="mt-4 border-t border-gray-100 pt-4">
+                                            <p className="text-xs text-gray-500">Feedback</p>
+                                            <p className="mt-1 text-sm leading-6 text-gray-800">{submission.feedback}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#e6f4ea] px-4 py-3">
+                                        <GraduationCap className="h-4 w-4 text-[#137333]" />
+                                        <span className="text-sm font-medium text-[#137333]">
+                                            Current grade: {submission.marks} / {maxMarks}
+                                        </span>
                                     </div>
-                                    <div className="mt-5 flex items-center justify-between gap-3">
-                                        {flash && <span className="text-sm font-medium text-[#188038]">Saved</span>}
-                                        <button
-                                            type="button"
-                                            onClick={handleSaveGrade}
-                                            className="flex cursor-pointer items-center gap-2 rounded-full bg-[#1a63d8] px-6 py-2.5 text-sm font-medium text-white hover:bg-[#1554b5]"
-                                        >
-                                            <Save className="h-4 w-4" />
-                                            Save Grade
-                                        </button>
-                                    </div>
-                                    {savedMarks !== null && (
-                                        <div className="mt-4 flex items-center gap-2 rounded-lg bg-[#e6f4ea] px-4 py-3">
-                                            <GraduationCap className="h-4 w-4 text-[#137333]" />
-                                            <span className="text-sm font-medium text-[#137333]">
-                                                Current grade: {savedMarks} / {maxMarks}
-                                            </span>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="mt-3 text-sm text-gray-600">Not graded yet.</p>
+                                    {submission.feedback && (
+                                        <div className="mt-4 border-t border-gray-100 pt-4">
+                                            <p className="text-xs text-gray-500">Feedback</p>
+                                            <p className="mt-1 text-sm leading-6 text-gray-800">{submission.feedback}</p>
                                         </div>
                                     )}
                                 </>
                             )}
                         </section>
-                        { }
+
+                        {/* Submission info */}
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Submission Info</h2>
                             <dl className="mt-4 space-y-3 text-sm">
@@ -276,7 +250,8 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
                                 )}
                             </dl>
                         </section>
-                        { }
+
+                        {/* Student info */}
                         <section className="rounded-xl border border-gray-200 bg-white p-6">
                             <h2 className="text-lg font-medium text-gray-900">Student Info</h2>
                             <dl className="mt-4 space-y-3 text-sm">
@@ -302,6 +277,7 @@ export function AdminSubmissionDetailView({ submission }: AdminSubmissionDetailV
         </div>
     );
 }
+
 function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
     return (
         <div className="flex items-start gap-3">
@@ -313,6 +289,7 @@ function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value
         </div>
     );
 }
+
 function AttachmentRow({ attachment }: { attachment: SubmissionAttachment }) {
     return (
         <div className="flex items-center gap-4 px-6 py-4">
