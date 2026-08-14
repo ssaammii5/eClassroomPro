@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     ClipboardList,
     GraduationCap,
@@ -11,11 +11,34 @@ import {
     SlidersHorizontal,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { adminAssignments } from "@/lib/adminData";
 import type { AdminAssignment } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
+import {
+    getAssignmentsRequest,
+    type AssignmentDto,
+} from "@/lib/api/assignments";
+
+function mapDtoToAdminAssignment(dto: AssignmentDto): AdminAssignment {
+    return {
+        id: dto.id,
+        courseId: dto.courseId,
+        courseName: dto.courseName ?? "Unknown Course",
+        program: dto.program ?? "Unknown",
+        department: dto.department ?? "Unknown",
+        session: dto.session ?? "Unknown",
+        title: dto.title,
+        description: dto.description,
+        deadline: dto.deadlineUtc.split("T")[0],
+        maxMarks: dto.maxMarks,
+        status: (dto.status === "Archived" ? "Pending" : dto.status) as AdminAssignment["status"],
+        createdById: dto.createdById,
+        createdBy: dto.createdByName ?? "Unknown",
+        createdAt: dto.createdAtUtc.split("T")[0],
+        submissionCount: dto.submissionCount,
+    };
+}
 
 function sessionRank(key: string): number {
     const [period, yearStr] = key.split("/");
@@ -54,6 +77,9 @@ interface ProgramGroup {
 
 export function AdminAssignmentsView() {
     const router = useRouter();
+    const [assignments, setAssignments] = useState<AdminAssignment[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [programFilter, setProgramFilter] = useState("all");
@@ -61,26 +87,42 @@ export function AdminAssignmentsView() {
     const [sessionFilter, setSessionFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
 
+    const loadAssignments = useCallback(async () => {
+        try {
+            setError(null);
+            const dtos = await getAssignmentsRequest();
+            setAssignments(dtos.map(mapDtoToAdminAssignment));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load assignments.");
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadAssignments();
+    }, [loadAssignments]);
+
     const departmentOptions = useMemo(() => {
         const base =
             programFilter === "all"
-                ? adminAssignments
-                : adminAssignments.filter((a) => a.program === programFilter);
+                ? assignments
+                : assignments.filter((a) => a.program === programFilter);
         return Array.from(new Set(base.map((a) => a.department).filter(Boolean))).sort();
-    }, [programFilter]);
+    }, [assignments, programFilter]);
 
     const sessionOptions = useMemo(() => {
         const base =
             programFilter === "all"
-                ? adminAssignments
-                : adminAssignments.filter((a) => a.program === programFilter);
+                ? assignments
+                : assignments.filter((a) => a.program === programFilter);
         return Array.from(new Set(base.map((a) => a.session).filter(Boolean))).sort(
             (a, b) => sessionRank(b) - sessionRank(a)
         );
-    }, [programFilter]);
+    }, [assignments, programFilter]);
 
     const filtered = useMemo(() => {
-        return adminAssignments.filter((a) => {
+        return assignments.filter((a) => {
             const matchSearch =
                 a.title.toLowerCase().includes(search.toLowerCase()) ||
                 a.createdBy.toLowerCase().includes(search.toLowerCase()) ||
@@ -91,7 +133,7 @@ export function AdminAssignmentsView() {
             const matchStatus = statusFilter === "all" || a.status === statusFilter;
             return matchSearch && matchProgram && matchDept && matchSession && matchStatus;
         });
-    }, [search, programFilter, departmentFilter, sessionFilter, statusFilter]);
+    }, [assignments, search, programFilter, departmentFilter, sessionFilter, statusFilter]);
 
     const activeFilterCount = [programFilter, departmentFilter, sessionFilter, statusFilter].filter(
         (f) => f !== "all"
@@ -110,13 +152,10 @@ export function AdminAssignmentsView() {
         for (const a of filtered) {
             if (!map.has(a.program)) map.set(a.program, new Map());
             const deptMap = map.get(a.program)!;
-
             if (!deptMap.has(a.department)) deptMap.set(a.department, new Map());
             const sessionMap = deptMap.get(a.department)!;
-
             if (!sessionMap.has(a.session)) sessionMap.set(a.session, new Map());
             const courseMap = sessionMap.get(a.session)!;
-
             if (!courseMap.has(a.courseName)) courseMap.set(a.courseName, []);
             courseMap.get(a.courseName)!.push(a);
         }
@@ -198,14 +237,26 @@ export function AdminAssignmentsView() {
         },
     ];
 
+    if (loading) {
+        return (
+            <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#1a73e8] border-t-transparent" />
+            </div>
+        );
+    }
+
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
+            {error && (
+                <div className="mb-4 rounded-lg bg-[#fce8e6] px-5 py-3.5 text-sm text-[#c5221f]">{error}</div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">All Assignments</h1>
                     <p className="mt-1 text-sm text-gray-600">
-                        {adminAssignments.length} assignments total • {filtered.length} shown
+                        {assignments.length} assignments total • {filtered.length} shown
                     </p>
                 </div>
             </div>
@@ -222,6 +273,7 @@ export function AdminAssignmentsView() {
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
+
                 <div className="flex flex-wrap items-center gap-3">
                     <button
                         type="button"
@@ -267,6 +319,7 @@ export function AdminAssignmentsView() {
                             ))}
                         </select>
                     </label>
+
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Department</span>
                         <select
@@ -280,6 +333,7 @@ export function AdminAssignmentsView() {
                             ))}
                         </select>
                     </label>
+
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Session</span>
                         <select
@@ -293,6 +347,7 @@ export function AdminAssignmentsView() {
                             ))}
                         </select>
                     </label>
+
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-gray-600">Status</span>
                         <select

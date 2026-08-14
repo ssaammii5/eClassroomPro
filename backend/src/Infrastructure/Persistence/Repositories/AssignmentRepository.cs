@@ -18,8 +18,9 @@ public class AssignmentRepository : IAssignmentRepository
     {
         return await _context.Assignments
             .AsNoTracking()
-            .Include(x => x.Course).ThenInclude(c => c!.CourseTeachers)
+            .Include(x => x.Course)
             .Include(x => x.CreatedBy)
+            .Include(x => x.Submissions)
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
@@ -27,8 +28,9 @@ public class AssignmentRepository : IAssignmentRepository
     {
         return await _context.Assignments
             .AsNoTracking()
-            .Include(x => x.Course).ThenInclude(c => c!.CourseTeachers)
+            .Include(x => x.Course)
             .Include(x => x.CreatedBy)
+            .Include(x => x.Submissions)
             .OrderByDescending(x => x.DeadlineUtc)
             .ToListAsync(cancellationToken);
     }
@@ -39,6 +41,7 @@ public class AssignmentRepository : IAssignmentRepository
             .AsNoTracking()
             .Include(x => x.Course)
             .Include(x => x.CreatedBy)
+            .Include(x => x.Submissions)
             .Where(x => x.CreatedById == teacherId
                 || x.Course!.TeacherId == teacherId
                 || x.Course!.CourseTeachers.Any(ct => ct.TeacherId == teacherId))
@@ -64,7 +67,7 @@ public class AssignmentRepository : IAssignmentRepository
             .AsNoTracking()
             .AnyAsync(
                 x => x.AssignmentId == assignmentId &&
-                (x.Status == SubmissionStatus.Submitted || x.Status == SubmissionStatus.Graded),
+                     (x.Status == SubmissionStatus.Submitted || x.Status == SubmissionStatus.Graded),
                 cancellationToken);
     }
 

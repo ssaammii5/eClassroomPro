@@ -119,15 +119,15 @@ public class AssignmentService
             ?? throw new NotFoundException("Course not found.");
 
         if (_currentUserService.IsTeacher)
-{
-    var isTeacherOfCourse = course.TeacherId == _currentUserService.UserId
-        || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
+        {
+            var isTeacherOfCourse = course.TeacherId == _currentUserService.UserId
+                || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
 
-    if (!isTeacherOfCourse)
-    {
-        throw new ForbiddenAccessException("You can create assignments only for courses assigned to you.");
-    }
-}
+            if (!isTeacherOfCourse)
+            {
+                throw new ForbiddenAccessException("You can create assignments only for courses assigned to you.");
+            }
+        }
 
         var assignment = new Assignment
         {
@@ -171,7 +171,6 @@ public class AssignmentService
         if (assignment.Status == AssignmentStatus.Published)
         {
             var hasSubmissions = await _assignmentRepository.AnySubmittedAsync(id, cancellationToken);
-
             if (hasSubmissions)
             {
                 throw new BusinessException("Cannot update a published assignment after students have submitted.");
@@ -195,14 +194,12 @@ public class AssignmentService
         EnsureCanManageAssignment(assignment);
 
         var hasSubmissions = await _assignmentRepository.AnySubmittedAsync(id, cancellationToken);
-
         if (hasSubmissions)
         {
             throw new BusinessException("Cannot delete an assignment that has student submissions.");
         }
 
         _assignmentRepository.Remove(assignment);
-
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
@@ -230,26 +227,26 @@ public class AssignmentService
     }
 
     private void EnsureCanManageAssignment(Assignment assignment)
-{
-    if (_currentUserService.IsAdmin)
     {
-        return;
-    }
+        if (_currentUserService.IsAdmin)
+        {
+            return;
+        }
 
-    if (!_currentUserService.IsTeacher)
-    {
-        throw new ForbiddenAccessException("Only teachers or admins can manage assignments.");
-    }
+        if (!_currentUserService.IsTeacher)
+        {
+            throw new ForbiddenAccessException("Only teachers or admins can manage assignments.");
+        }
 
-    var isCreator = assignment.CreatedById == _currentUserService.UserId;
-    var isPrimaryTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
-    var isCourseTeacher = assignment.Course?.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId) ?? false;
+        var isCreator = assignment.CreatedById == _currentUserService.UserId;
+        var isPrimaryTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
+        var isCourseTeacher = assignment.Course?.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId) ?? false;
 
-    if (!isCreator && !isPrimaryTeacher && !isCourseTeacher)
-    {
-        throw new ForbiddenAccessException("You do not have permission to manage this assignment.");
+        if (!isCreator && !isPrimaryTeacher && !isCourseTeacher)
+        {
+            throw new ForbiddenAccessException("You do not have permission to manage this assignment.");
+        }
     }
-}
 
     private static AssignmentDto ToDto(Assignment assignment)
     {
@@ -259,13 +256,18 @@ public class AssignmentService
             CourseId = assignment.CourseId,
             CourseName = assignment.Course?.Name,
             Subject = assignment.Course?.Subject,
+            Program = assignment.Course?.Program,
+            Department = assignment.Course?.Department,
+            Session = assignment.Course?.Session,
             Title = assignment.Title,
             Description = assignment.Description,
             DeadlineUtc = assignment.DeadlineUtc,
             MaxMarks = assignment.MaxMarks,
             Status = assignment.Status,
             CreatedById = assignment.CreatedById,
-            CreatedAtUtc = assignment.CreatedAtUtc
+            CreatedByName = assignment.CreatedBy?.Name,
+            CreatedAtUtc = assignment.CreatedAtUtc,
+            SubmissionCount = assignment.Submissions?.Count ?? 0
         };
     }
 }
