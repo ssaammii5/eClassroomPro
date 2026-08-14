@@ -8,12 +8,12 @@ import {
     Search,
     SlidersHorizontal,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { adminSubmissions, adminCourses } from "@/lib/adminData";
 import type { AdminSubmission } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
 import { DataTable } from "./DataTable";
 import { StatusBadge } from "./StatusBadge";
-
 function sessionRank(key: string): number {
     const [period, yearStr] = key.split("/");
     const year = Number(yearStr);
@@ -21,11 +21,9 @@ function sessionRank(key: string): number {
     const periodIndex = period === "July-December" ? 1 : 0;
     return year * 2 + periodIndex;
 }
-
 const PROGRAM_ORDER: Record<string, number> = Object.fromEntries(
     PROGRAM_TYPES.map((p, i) => [p, i])
 );
-
 function resolveCourseInfo(courseId: number) {
     const course = adminCourses.find((c) => c.id === courseId);
     return {
@@ -34,38 +32,33 @@ function resolveCourseInfo(courseId: number) {
         session: course?.session ?? "Unknown",
     };
 }
-
 interface CourseGroup {
     courseName: string;
     submissions: AdminSubmission[];
 }
-
 interface SessionGroup {
     session: string;
     courses: CourseGroup[];
     count: number;
 }
-
 interface DeptGroup {
     name: string;
     sessions: SessionGroup[];
     count: number;
 }
-
 interface ProgramGroup {
     name: string;
     departments: DeptGroup[];
     count: number;
 }
-
 export function AdminSubmissionsView() {
+    const router = useRouter();
     const [search, setSearch] = useState("");
     const [filtersOpen, setFiltersOpen] = useState(false);
     const [programFilter, setProgramFilter] = useState("all");
     const [departmentFilter, setDepartmentFilter] = useState("all");
     const [sessionFilter, setSessionFilter] = useState("all");
     const [statusFilter, setStatusFilter] = useState("all");
-
     const departmentOptions = useMemo(() => {
         const base =
             programFilter === "all"
@@ -77,7 +70,6 @@ export function AdminSubmissionsView() {
             new Set(base.map((s) => resolveCourseInfo(s.courseId).department).filter(Boolean))
         ).sort();
     }, [programFilter]);
-
     const sessionOptions = useMemo(() => {
         const base =
             programFilter === "all"
@@ -89,7 +81,6 @@ export function AdminSubmissionsView() {
             new Set(base.map((s) => resolveCourseInfo(s.courseId).session).filter(Boolean))
         ).sort((a, b) => sessionRank(b) - sessionRank(a));
     }, [programFilter]);
-
     const filtered = useMemo(() => {
         return adminSubmissions.filter((s) => {
             const courseInfo = resolveCourseInfo(s.courseId);
@@ -107,27 +98,23 @@ export function AdminSubmissionsView() {
             return matchSearch && matchProgram && matchDept && matchSession && matchStatus;
         });
     }, [search, programFilter, departmentFilter, sessionFilter, statusFilter]);
-
     const activeFilterCount = [
         programFilter,
         departmentFilter,
         sessionFilter,
         statusFilter,
     ].filter((f) => f !== "all").length;
-
     const clearFilters = () => {
         setProgramFilter("all");
         setDepartmentFilter("all");
         setSessionFilter("all");
         setStatusFilter("all");
     };
-
     const programGroups = useMemo<ProgramGroup[]>(() => {
         const map = new Map<
             string,
             Map<string, Map<string, Map<string, AdminSubmission[]>>>
         >();
-
         for (const s of filtered) {
             const info = resolveCourseInfo(s.courseId);
             if (!map.has(info.program)) map.set(info.program, new Map());
@@ -139,13 +126,11 @@ export function AdminSubmissionsView() {
             if (!courseMap.has(s.courseName)) courseMap.set(s.courseName, []);
             courseMap.get(s.courseName)!.push(s);
         }
-
         const programs = Array.from(map.keys()).sort((a, b) => {
             const ia = PROGRAM_ORDER[a] ?? 99;
             const ib = PROGRAM_ORDER[b] ?? 99;
             return ia - ib || a.localeCompare(b);
         });
-
         return programs.map((program) => {
             const deptMap = map.get(program)!;
             const departments: DeptGroup[] = Array.from(deptMap.keys())
@@ -182,12 +167,17 @@ export function AdminSubmissionsView() {
             };
         });
     }, [filtered]);
-
+    const handleRowClick = (submissionId: number) => {
+        router.push(`/submissions/${submissionId}`);
+    };
     const columns = [
         {
             key: "studentName",
             header: "Student",
             truncate: true,
+            render: (s: AdminSubmission) => (
+                <span className="text-sm font-medium text-[#1a73e8]">{s.studentName}</span>
+            ),
         },
         {
             key: "assignmentTitle",
@@ -231,10 +221,9 @@ export function AdminSubmissionsView() {
                 ),
         },
     ];
-
     return (
         <div className="mx-auto w-full max-w-[1200px] px-4 py-8 sm:px-8">
-            {/* Header */}
+            { }
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">All Submissions</h1>
@@ -243,8 +232,7 @@ export function AdminSubmissionsView() {
                     </p>
                 </div>
             </div>
-
-            {/* Search & Filters */}
+            { }
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative w-full sm:max-w-sm sm:flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
@@ -261,8 +249,8 @@ export function AdminSubmissionsView() {
                         type="button"
                         onClick={() => setFiltersOpen((v) => !v)}
                         className={`flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition-colors ${filtersOpen || activeFilterCount > 0
-                                ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
-                                : "border-gray-400 text-gray-700 hover:bg-gray-50"
+                            ? "border-[#1a63d8] bg-[#e8f0fe] text-[#174ea6]"
+                            : "border-gray-400 text-gray-700 hover:bg-gray-50"
                             }`}
                     >
                         <SlidersHorizontal className="h-4 w-4" />
@@ -284,8 +272,7 @@ export function AdminSubmissionsView() {
                     )}
                 </div>
             </div>
-
-            {/* Filter Panel */}
+            { }
             {filtersOpen && (
                 <div className="mt-4 grid gap-4 rounded-lg border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <label className="block">
@@ -346,18 +333,16 @@ export function AdminSubmissionsView() {
                     </label>
                 </div>
             )}
-
-            {/* Grouped Content */}
+            { }
             <div className="mt-8 space-y-12">
                 {filtered.length === 0 && (
                     <div className="rounded-lg border border-gray-200 bg-white py-16 text-center">
                         <p className="text-sm text-gray-600">No submissions match your filters.</p>
                     </div>
                 )}
-
                 {programGroups.map((pg) => (
                     <section key={pg.name}>
-                        {/* Program header */}
+                        { }
                         <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-gray-300 pb-3">
                             <div className="flex min-w-0 items-center gap-3">
                                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#d7e3fd] text-[#174ea6] sm:h-10 sm:w-10">
@@ -369,8 +354,7 @@ export function AdminSubmissionsView() {
                                 {pg.count} submission{pg.count === 1 ? "" : "s"}
                             </span>
                         </div>
-
-                        {/* Departments */}
+                        { }
                         {pg.departments.map((dept) => (
                             <div key={dept.name} className="mt-6">
                                 <div className="flex flex-wrap items-center justify-between gap-2 px-1">
@@ -384,8 +368,7 @@ export function AdminSubmissionsView() {
                                         {dept.count} submission{dept.count === 1 ? "" : "s"}
                                     </span>
                                 </div>
-
-                                {/* Sessions */}
+                                { }
                                 <div className="mt-4 space-y-6">
                                     {dept.sessions.map((sess) => (
                                         <div key={sess.session}>
@@ -398,8 +381,7 @@ export function AdminSubmissionsView() {
                                                     {sess.count} submission{sess.count === 1 ? "" : "s"}
                                                 </span>
                                             </div>
-
-                                            {/* Courses */}
+                                            { }
                                             <div className="space-y-5">
                                                 {sess.courses.map((course) => (
                                                     <div key={course.courseName}>
@@ -418,6 +400,7 @@ export function AdminSubmissionsView() {
                                                             data={course.submissions}
                                                             keyExtractor={(s) => s.id}
                                                             emptyMessage="No submissions in this course."
+                                                            onRowClick={(s) => handleRowClick(s.id)}
                                                         />
                                                     </div>
                                                 ))}

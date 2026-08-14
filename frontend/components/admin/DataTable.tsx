@@ -1,7 +1,5 @@
 "use client";
-
 import type { ReactNode } from "react";
-
 interface Column<T> {
     key: string;
     header: string;
@@ -10,7 +8,6 @@ interface Column<T> {
     width?: string;
     truncate?: boolean;
 }
-
 interface DataTableProps<T> {
     columns: Column<T>[];
     data: T[];
@@ -18,8 +15,8 @@ interface DataTableProps<T> {
     emptyMessage?: string;
     tableLayout?: "auto" | "fixed";
     minWidthClassName?: string;
+    onRowClick?: (item: T) => void;
 }
-
 export function DataTable<T>({
     columns,
     data,
@@ -27,6 +24,7 @@ export function DataTable<T>({
     emptyMessage = "No records found.",
     tableLayout = "auto",
     minWidthClassName = "min-w-[800px]",
+    onRowClick,
 }: DataTableProps<T>) {
     if (data.length === 0) {
         return (
@@ -35,7 +33,6 @@ export function DataTable<T>({
             </div>
         );
     }
-
     return (
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
             <table
@@ -62,22 +59,22 @@ export function DataTable<T>({
                         ))}
                     </tr>
                 </thead>
-
                 <tbody className="divide-y divide-gray-100">
                     {data.map((item) => (
-                        <tr key={keyExtractor(item)} className="transition-colors hover:bg-gray-50">
+                        <tr
+                            key={keyExtractor(item)}
+                            onClick={onRowClick ? () => onRowClick(item) : undefined}
+                            className={`transition-colors hover:bg-gray-50 ${onRowClick ? "cursor-pointer" : ""}`}
+                        >
                             {columns.map((col) => {
                                 const content = col.render
                                     ? col.render(item)
                                     : ((item as Record<string, unknown>)[col.key] as ReactNode);
-
                                 const rawValue = col.render
                                     ? undefined
                                     : (item as Record<string, unknown>)[col.key];
-
                                 const truncateTitle =
                                     typeof rawValue === "string" ? rawValue : undefined;
-
                                 return (
                                     <td
                                         key={col.key}
