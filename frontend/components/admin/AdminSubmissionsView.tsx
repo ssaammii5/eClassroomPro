@@ -9,7 +9,7 @@ import {
     SlidersHorizontal,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { adminSubmissions, adminCourses } from "@/lib/adminData";
+import { adminSubmissions, adminCourses, adminUsers } from "@/lib/adminData";
 import type { AdminSubmission } from "@/lib/adminData";
 import { PROGRAM_TYPES } from "@/components/settings/constants";
 import { DataTable } from "./DataTable";
@@ -31,6 +31,10 @@ function resolveCourseInfo(courseId: number) {
         department: course?.department ?? "Unknown",
         session: course?.session ?? "Unknown",
     };
+}
+function resolveStudentAcademicId(studentId: number): string {
+    const user = adminUsers.find((u) => u.id === studentId);
+    return user?.studentDetails?.studentId ?? "";
 }
 interface CourseGroup {
     courseName: string;
@@ -84,10 +88,12 @@ export function AdminSubmissionsView() {
     const filtered = useMemo(() => {
         return adminSubmissions.filter((s) => {
             const courseInfo = resolveCourseInfo(s.courseId);
+            const academicId = resolveStudentAcademicId(s.studentId);
             const matchSearch =
                 s.studentName.toLowerCase().includes(search.toLowerCase()) ||
                 s.assignmentTitle.toLowerCase().includes(search.toLowerCase()) ||
-                s.courseName.toLowerCase().includes(search.toLowerCase());
+                s.courseName.toLowerCase().includes(search.toLowerCase()) ||
+                academicId.toLowerCase().includes(search.toLowerCase());
             const matchProgram =
                 programFilter === "all" || courseInfo.program === programFilter;
             const matchDept =
@@ -172,6 +178,20 @@ export function AdminSubmissionsView() {
     };
     const columns = [
         {
+            key: "studentId",
+            header: "ID",
+            width: "13%",
+            truncate: true,
+            render: (s: AdminSubmission) => {
+                const academicId = resolveStudentAcademicId(s.studentId);
+                return academicId ? (
+                    <span className="text-sm text-gray-900" title={academicId}>{academicId}</span>
+                ) : (
+                    <span className="text-gray-400">—</span>
+                );
+            },
+        },
+        {
             key: "studentName",
             header: "Student",
             width: "18%",
@@ -211,7 +231,7 @@ export function AdminSubmissionsView() {
         {
             key: "feedback",
             header: "Feedback",
-            width: "30%",
+            width: "17%",
             truncate: true,
             render: (s: AdminSubmission) =>
                 s.feedback ? (
@@ -238,7 +258,7 @@ export function AdminSubmissionsView() {
                         type="text"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by student, assignment, or course..."
+                        placeholder="Search by student, ID, assignment, or course..."
                         className="w-full rounded-md border border-gray-400/80 bg-white py-2.5 pl-10 pr-4 text-sm focus:border-[#1a73e8] focus:outline-none focus:ring-1 focus:ring-[#1a73e8]"
                     />
                 </div>
@@ -393,7 +413,7 @@ export function AdminSubmissionsView() {
                                                             keyExtractor={(s) => s.id}
                                                             emptyMessage="No submissions in this course."
                                                             tableLayout="fixed"
-                                                            minWidthClassName="min-w-[760px]"
+                                                            minWidthClassName="min-w-[860px]"
                                                             onRowClick={(s) => handleRowClick(s.id)}
                                                         />
                                                     </div>
