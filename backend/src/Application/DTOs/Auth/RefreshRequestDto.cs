@@ -1,7 +1,9 @@
-// backend/src/Application/DTOs/Auth/RefreshRequestDto.cs
+using System.ComponentModel.DataAnnotations;
+
 namespace eClassroomPro.Application.DTOs.Auth;
 
 public class RefreshRequestDto
 {
+    [Required]
     public string RefreshToken { get; set; } = string.Empty;
 }

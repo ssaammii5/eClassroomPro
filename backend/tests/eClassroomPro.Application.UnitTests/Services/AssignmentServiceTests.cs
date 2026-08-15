@@ -13,21 +13,20 @@ public class AssignmentServiceTests
 {
     private readonly Mock<IAssignmentRepository> _assignmentRepository = new();
     private readonly Mock<ICourseRepository> _courseRepository = new();
+    private readonly Mock<ISubmissionRepository> _submissionRepository = new();
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-
     private readonly AssignmentService _assignmentService;
-
     private readonly DateTime _utcNow = new(2026, 8, 8, 12, 0, 0, DateTimeKind.Utc);
 
     public AssignmentServiceTests()
     {
         _dateTimeProvider.Setup(x => x.UtcNow).Returns(_utcNow);
-
         _assignmentService = new AssignmentService(
             _assignmentRepository.Object,
             _courseRepository.Object,
+            _submissionRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
             _unitOfWork.Object);

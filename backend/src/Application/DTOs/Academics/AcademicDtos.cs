@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace eClassroomPro.Application.DTOs.Academics;
 
 public class AcademicProgramDto
@@ -9,7 +11,11 @@ public class AcademicProgramDto
 
 public class UpsertAcademicProgramDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
+
+    [MaxLength(1000)]
     public string Description { get; set; } = string.Empty;
 }
 
@@ -22,7 +28,12 @@ public class AcademicDepartmentDto
 
 public class UpsertAcademicDepartmentDto
 {
+    [Required]
+    [MaxLength(200)]
     public string Name { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(50)]
     public string Code { get; set; } = string.Empty;
 }
 
@@ -34,5 +45,7 @@ public class AcademicSemesterDto
 
 public class UpsertAcademicSemesterDto
 {
+    [Required]
+    [MaxLength(100)]
     public string Name { get; set; } = string.Empty;
 }

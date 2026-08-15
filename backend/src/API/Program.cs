@@ -11,8 +11,11 @@ using eClassroomPro.Infrastructure.Persistence;
 using eClassroomPro.Infrastructure.Persistence.Repositories;
 using eClassroomPro.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -22,6 +25,21 @@ builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    // Phase 9: turn DTO validation failures into the same { error } shape
+    // the GlobalExceptionMiddleware uses, so the frontend contract stays consistent.
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var message = context.ModelState
+                .Where(entry => entry.Value?.Errors.Count > 0)
+                .SelectMany(entry => entry.Value!.Errors.Select(error => error.ErrorMessage))
+                .FirstOrDefault(m => !string.IsNullOrWhiteSpace(m))
+                ?? "Invalid request payload.";
+
+            return new BadRequestObjectResult(new { error = message });
+        };
     });
 
 builder.Services.AddHttpContextAccessor();
@@ -49,11 +67,18 @@ builder.Services.AddScoped<AssignmentService>();
 builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddScoped<AppSettingService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<AnnouncementsService>();
 
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// Phase 9: health checks (liveness + database readiness).
+builder.Services.AddScoped<DatabaseHealthCheck>();
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy("API is running."))
+    .AddCheck<DatabaseHealthCheck>("database");
 
 var jwtSettings = builder.Configuration
     .GetSection("Jwt")
@@ -175,9 +200,17 @@ app.UseSwaggerUI();
 
 app.UseCors("Frontend");
 app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Phase 9: health endpoints for Docker / orchestrators.
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Name == "database"
+});
 
 app.Run();

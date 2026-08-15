@@ -20,6 +20,7 @@ public interface IApplicationDbContext
     DbSet<AcademicSemester> AcademicSemesters { get; }
     DbSet<StudentDetails> StudentDetails { get; }
     DbSet<TeacherDetails> TeacherDetails { get; }
+    DbSet<Announcement> Announcements { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

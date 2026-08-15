@@ -26,6 +26,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWor
     public DbSet<AcademicSemester> AcademicSemesters => Set<AcademicSemester>();
     public DbSet<StudentDetails> StudentDetails => Set<StudentDetails>();
     public DbSet<TeacherDetails> TeacherDetails => Set<TeacherDetails>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

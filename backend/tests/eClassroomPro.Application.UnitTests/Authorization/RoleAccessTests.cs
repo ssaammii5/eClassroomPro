@@ -16,6 +16,7 @@ public class RoleAccessTests
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IApplicationDbContext> _db = new();
 
     public RoleAccessTests()
     {
@@ -33,6 +34,7 @@ public class RoleAccessTests
         var assignmentService = new AssignmentService(
             _assignmentRepository.Object,
             _courseRepository.Object,
+            _submissionRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
             _unitOfWork.Object);
@@ -64,7 +66,8 @@ public class RoleAccessTests
             _courseRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _db.Object);
 
         var dto = new GradeSubmissionDto
         {

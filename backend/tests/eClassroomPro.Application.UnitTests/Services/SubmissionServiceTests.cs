@@ -17,22 +17,21 @@ public class SubmissionServiceTests
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
-
+    private readonly Mock<IApplicationDbContext> _db = new();
     private readonly SubmissionService _submissionService;
-
     private readonly DateTime _utcNow = new(2026, 8, 8, 12, 0, 0, DateTimeKind.Utc);
 
     public SubmissionServiceTests()
     {
         _dateTimeProvider.Setup(x => x.UtcNow).Returns(_utcNow);
-
         _submissionService = new SubmissionService(
             _submissionRepository.Object,
             _assignmentRepository.Object,
             _courseRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _db.Object);
     }
 
     [Fact]
