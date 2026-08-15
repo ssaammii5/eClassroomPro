@@ -12,8 +12,8 @@ using eClassroomPro.Infrastructure.Persistence;
 namespace eClassroomPro.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260814200002_SyncModelChanges")]
-    partial class SyncModelChanges
+    [Migration("20260815193533_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -124,8 +124,18 @@ namespace eClassroomPro.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Key")
                         .IsRequired()
@@ -173,6 +183,9 @@ namespace eClassroomPro.Infrastructure.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
                     b.Property<int>("MaxMarks")
                         .HasColumnType("integer");
 
@@ -180,6 +193,11 @@ namespace eClassroomPro.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Topic")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
@@ -462,6 +480,12 @@ namespace eClassroomPro.Infrastructure.Migrations
                     b.Property<string>("Feedback")
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("GradedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("GradedById")
+                        .HasColumnType("integer");
+
                     b.Property<decimal?>("Marks")
                         .HasPrecision(6, 2)
                         .HasColumnType("numeric(6,2)");
@@ -480,12 +504,99 @@ namespace eClassroomPro.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("GradedById");
+
                     b.HasIndex("StudentId");
 
                     b.HasIndex("AssignmentId", "StudentId")
                         .IsUnique();
 
                     b.ToTable("Submissions");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.SubmissionActivity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("ActorId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("SubmissionActivities");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.SubmissionAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("FileType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("StoredPath")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("SubmissionId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubmissionId");
+
+                    b.ToTable("SubmissionAttachments");
                 });
 
             modelBuilder.Entity("eClassroomPro.Domain.Entities.TeacherDetails", b =>
@@ -664,6 +775,11 @@ namespace eClassroomPro.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("eClassroomPro.Domain.Entities.User", "GradedBy")
+                        .WithMany()
+                        .HasForeignKey("GradedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("eClassroomPro.Domain.Entities.User", "Student")
                         .WithMany("Submissions")
                         .HasForeignKey("StudentId")
@@ -672,7 +788,39 @@ namespace eClassroomPro.Infrastructure.Migrations
 
                     b.Navigation("Assignment");
 
+                    b.Navigation("GradedBy");
+
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.SubmissionActivity", b =>
+                {
+                    b.HasOne("eClassroomPro.Domain.Entities.User", "Actor")
+                        .WithMany()
+                        .HasForeignKey("ActorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("eClassroomPro.Domain.Entities.Submission", "Submission")
+                        .WithMany("Activities")
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Actor");
+
+                    b.Navigation("Submission");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.SubmissionAttachment", b =>
+                {
+                    b.HasOne("eClassroomPro.Domain.Entities.Submission", "Submission")
+                        .WithMany("Attachments")
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("eClassroomPro.Domain.Entities.TeacherDetails", b =>
@@ -698,6 +846,13 @@ namespace eClassroomPro.Infrastructure.Migrations
                     b.Navigation("CourseTeachers");
 
                     b.Navigation("Enrollments");
+                });
+
+            modelBuilder.Entity("eClassroomPro.Domain.Entities.Submission", b =>
+                {
+                    b.Navigation("Activities");
+
+                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("eClassroomPro.Domain.Entities.User", b =>
