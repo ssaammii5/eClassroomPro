@@ -1,308 +1,316 @@
-```markdown
 # eClassroomPro
 
-A **Role-based Assignment & Submission Management System** built with a modern full-stack architecture. eClassroomPro provides a complete classroom management experience for **Admins**, **Teachers**, and **Students** — covering course administration, assignment lifecycle, submission tracking, grading, announcements, and academic structure management.
+A **Role-based Assignment & Submission Management System** built with .NET 10 and Next.js 16. It provides a complete classroom management platform for admins, teachers, and students — covering course management, assignment creation, submission tracking, grading, and academic administration.
 
 ---
 
-## 🏗️ Tech Stack
+## 🏗️ Architecture
 
-| Layer       | Technology                                                        |
-|-------------|-------------------------------------------------------------------|
-| Frontend    | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Zod |
-| Backend     | ASP.NET Core (.NET 10), Clean Architecture                        |
-| Database    | PostgreSQL 16, Entity Framework Core 10                           |
-| Auth        | JWT Access Tokens + Rotating Refresh Tokens (PBKDF2 hashing)      |
-| Container   | Docker, Docker Compose                                            |
-| Testing     | xUnit, Moq, FluentAssertions, Testcontainers                      |
-| Package Mgr | pnpm (frontend), NuGet (backend)                                  |
+The project follows **Clean Architecture** with clear separation of concerns:
+
+```
+├── backend/
+│   ├── src/
+│   │   ├── API/              # ASP.NET Core Web API (Controllers, Middleware, Program.cs)
+│   │   ├── Application/      # Business Logic (Services, DTOs, Interfaces, Exceptions)
+│   │   ├── Domain/           # Entities, Enums (no dependencies)
+│   │   └── Infrastructure/   # EF Core, Repositories, Auth (JWT, Password Hashing)
+│   └── tests/
+│       ├── eClassroomPro.Application.UnitTests/
+│       └── eClassroomPro.Infrastructure.IntegrationTests/
+├── frontend/
+│   ├── app/                  # Next.js App Router pages
+│   ├── components/           # Reusable React components
+│   ├── lib/                  # API clients, auth, utilities, schemas
+│   └── public/               # Static assets
+├── docker-compose.yml
+└── README.md
+```
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
+| Technology | Purpose |
+|---|---|
+| .NET 10 / ASP.NET Core | Web API framework |
+| Entity Framework Core 10 | ORM & data access |
+| PostgreSQL (Npgsql) | Relational database |
+| JWT Bearer Authentication | Secure API authentication |
+| Refresh Token Rotation | Session management |
+| Swashbuckle (Swagger) | API documentation |
+| Rate Limiting | Brute-force protection |
+
+### Frontend
+| Technology | Purpose |
+|---|---|
+| Next.js 16 (App Router) | React framework |
+| React 19 | UI library |
+| TypeScript | Type safety |
+| Tailwind CSS 4 | Styling |
+| Zod | Runtime schema validation |
+| Lucide React | Icons |
+| pnpm | Package manager |
+
+### Testing
+| Technology | Purpose |
+|---|---|
+| xUnit | Test framework |
+| Moq | Mocking |
+| FluentAssertions | Assertion library |
+| Testcontainers | Integration testing with real PostgreSQL |
+
+### DevOps
+| Technology | Purpose |
+|---|---|
+| Docker & docker-compose | Containerization & orchestration |
+| GitHub Actions | CI/CD (workflows directory) |
 
 ---
 
 ## ✨ Features
 
+### 🔐 Authentication & Authorization
+- JWT access tokens (15-minute expiry) with refresh token rotation
+- Role-based access control: **Admin**, **Teacher**, **Student**
+- Rate limiting on authentication endpoints
+- Password hashing with PBKDF2 (100k iterations, SHA-256)
+
 ### 👨‍💼 Admin
-- Dashboard with system-wide statistics (users, courses, assignments, submissions)
-- Manage **Teachers** and **Students** (CRUD with role-specific detail forms)
-- Manage **Courses** (assign teachers, enroll students, group/manual enrollment)
-- Manage **Academics** (Programs, Departments, Semesters)
-- View all **Assignments** grouped by Program → Department → Session → Course
-- Review all **Submissions** with grading status, filtering, and detail views
-- Configure **Application Settings** (General, Notifications, Grading, Security)
+- Dashboard with statistics (users, courses, assignments, submissions)
+- Manage Teachers & Students (full CRUD with academic details)
+- Manage Courses (assign teachers, enroll students)
+- Manage Academics (Programs, Departments, Semesters)
+- View all Assignments & Submissions across the system
+- Application Settings management
 
 ### 👩‍🏫 Teacher
-- View assigned courses and classwork
-- **Create / Edit / Delete / Publish** assignments (with topic, kind, deadline, max marks)
-- Post and delete **Announcements** per course
-- Review student **Submissions**, grade with marks & feedback
-- View **Grades** grid per course
-- Course **People** view (teachers + enrolled students)
+- View assigned courses
+- Create, edit, publish, and delete assignments
+- View and grade student submissions
+- Post announcements to courses
+- View course people (teachers & students)
 
-### 🎓 Student
-- View enrolled courses on the home page (draggable, hideable cards)
-- Browse course **Stream** (announcements), **Classwork**, and **People**
-- View assignment details, **submit work** (text answer, file/link attachments)
-- Track submission status: Assigned → Submitted → Graded
-- **To-do** list and **Calendar** views for upcoming deadlines
-- Personal **Settings** (profile, security, notifications)
-
-### 🔐 Authentication & Security
-- JWT-based authentication with short-lived access tokens (15 min)
-- Rotating refresh tokens with server-side revocation
-- Role-based authorization (Admin, Teacher, Student) enforced at API and service layers
-- Rate limiting on authentication endpoints
-- PBKDF2 password hashing (100,000 iterations, SHA-256)
-- Global exception middleware with safe error responses
-
----
-
-## 📁 Project Structure
-
-```
-├── backend/
-│   ├── src/
-│   │   ├── API/                    # ASP.NET Core Web API (Controllers, Middleware, DI)
-│   │   ├── Application/            # Services, DTOs, Interfaces, Exceptions
-│   │   ├── Domain/                 # Entities, Enums, BaseEntity
-│   │   └── Infrastructure/         # EF Core, Repositories, Auth, Migrations
-│   ├── tests/
-│   │   ├── eClassroomPro.Application.UnitTests/
-│   │   └── eClassroomPro.Infrastructure.IntegrationTests/
-│   ├── Dockerfile
-│   └── eClassroomPro.slnx
-├── frontend/
-│   ├── app/                        # Next.js App Router pages
-│   │   ├── (dashboard)/            # Authenticated layout (admin, class, calendar, etc.)
-│   │   ├── login/
-│   │   ├── forgot-password/
-│   │   └── set-password/
-│   ├── components/                 # UI components (admin, auth, class, layout, settings…)
-│   ├── lib/                        # API clients, auth provider, schemas, mock data
-│   ├── public/
-│   ├── Dockerfile
-│   └── package.json
-├── docker-compose.yml
-├── LICENSE
-└── README.md
-```
+### 👨‍🎓 Student
+- View enrolled courses
+- Browse classwork (published assignments)
+- Submit assignments with text answers
+- View submission status and grades
+- View announcements
+- Calendar & To-do views
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - [Docker](https://www.docker.com/get-started) & Docker Compose
-- *(Optional, for local development without Docker)*
-  - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-  - [Node.js ≥ 24](https://nodejs.org/) with [pnpm](https://pnpm.io/) (`npm i -g pnpm@11.21.0`)
-  - [PostgreSQL 16](https://www.postgresql.org/)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (for local development)
+- [Node.js 24+](https://nodejs.org/) & [pnpm](https://pnpm.io/) (for local frontend development)
+- [PostgreSQL 16](https://www.postgresql.org/) (or use Docker)
 
----
-
-### Run with Docker Compose (Recommended)
+### Option 1: Run with Docker (Recommended)
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/eclassroompro.git
+git clone <repository-url>
 cd eclassroompro
 
-# Start all services (PostgreSQL, API, Frontend)
-docker compose up --build
+# Start all services (database, API, frontend)
+docker-compose up --build
 ```
 
-| Service    | URL                        |
-|------------|----------------------------|
-| Frontend   | http://localhost:3000       |
-| API        | http://localhost:5000       |
+Services will be available at:
+| Service | URL |
+|---|---|
+| Frontend (Next.js) | http://localhost:3000 |
+| API (.NET) | http://localhost:5000 |
 | Swagger UI | http://localhost:5000/swagger |
-| PostgreSQL | localhost:5432              |
+| PostgreSQL | localhost:5432 |
 
-> The API automatically runs EF Core migrations and seeds demo data on startup.
+### Option 2: Run Locally
 
----
-
-### Run Locally (Without Docker)
-
-#### 1. Database
-
+**1. Database:**
 ```bash
-# Create the database
-createdb eClassroomPro
+# Start PostgreSQL (or use Docker for just the DB)
+docker-compose up db
 ```
 
-Or update the connection string in `backend/src/API/appsettings.json`.
-
-#### 2. Backend
-
+**2. Backend:**
 ```bash
-cd backend
-dotnet restore src/API/eClassroomPro.API.csproj
-dotnet run --project src/API
+cd backend/src/API
+dotnet run
 ```
+The API will start at `http://localhost:5138`.
 
-The API starts at **http://localhost:5138** (or **https://localhost:7149**).
-
-#### 3. Frontend
-
+**3. Frontend:**
 ```bash
 cd frontend
 pnpm install
 pnpm dev
 ```
-
-The frontend starts at **http://localhost:3000**.
-
----
-
-## 🔑 Default Credentials (Seeded)
-
-| Role    | Email                      | Password      |
-|---------|----------------------------|---------------|
-| Admin   | admin@eclassroompro.com    | Admin@123     |
-| Teacher | teacher@eclassroompro.com  | Teacher@123   |
-| Student | student@eclassroompro.com  | Student@123   |
+The frontend will start at `http://localhost:3000`.
 
 ---
 
-## ⚙️ Environment Variables
+## 🔑 Default Credentials
 
-### Backend (`appsettings.json` / environment overrides)
+The database is auto-seeded on first startup:
 
-| Variable                                    | Description                          | Default                                  |
-|---------------------------------------------|--------------------------------------|------------------------------------------|
-| `ConnectionStrings__DefaultConnection`      | PostgreSQL connection string         | `Host=localhost;Port=5432;...`           |
-| `Jwt__Secret`                               | HMAC signing key (≥ 64 chars)        | *(dev-only value in appsettings.json)*   |
-| `Jwt__Issuer`                               | Token issuer                         | `eClassroomPro.API`                      |
-| `Jwt__Audience`                             | Token audience                       | `eClassroomPro.Client`                   |
-| `Jwt__ExpiresMinutes`                       | Access token lifetime (minutes)      | `15`                                     |
-| `Jwt__RefreshTokenExpirationDays`           | Refresh token lifetime (days)        | `7`                                      |
-
-### Frontend (`.env.local`)
-
-| Variable               | Description                              | Default                  |
-|------------------------|------------------------------------------|--------------------------|
-| `NEXT_PUBLIC_API_URL`  | API base URL (browser-side)              | `http://localhost:5000`  |
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@eclassroompro.com` | `Admin@123` |
+| Teacher | `teacher@eclassroompro.com` | `Teacher@123` |
+| Student | `student@eclassroompro.com` | `Student@123` |
 
 ---
 
-## 🧪 Testing
+## 📡 API Endpoints
 
-### Unit Tests (Application Layer)
+### Authentication
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/login` | Login (rate-limited) |
+| POST | `/api/auth/refresh` | Refresh access token |
+| POST | `/api/auth/logout` | Revoke all refresh tokens |
+| GET | `/api/auth/me` | Get current user info |
+
+### Users (Admin only)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/users` | List all users |
+| GET | `/api/users/{id}` | Get user by ID |
+| POST | `/api/users` | Create user |
+| PUT | `/api/users/{id}` | Update user |
+| DELETE | `/api/users/{id}` | Delete user |
+
+### Courses
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/courses` | List all courses |
+| GET | `/api/courses/my` | Get courses for current user |
+| GET | `/api/courses/{id}` | Get course details |
+| GET | `/api/courses/{id}/people` | Get course teachers & students |
+| POST | `/api/courses` | Create course (Admin) |
+| PUT | `/api/courses/{id}` | Update course (Admin) |
+| DELETE | `/api/courses/{id}` | Delete course (Admin) |
+
+### Assignments
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/assignments` | List assignments (role-aware) |
+| GET | `/api/courses/{courseId}/assignments` | Get assignments for a course |
+| GET | `/api/assignments/{id}` | Get assignment by ID |
+| POST | `/api/assignments` | Create assignment (Teacher/Admin) |
+| PUT | `/api/assignments/{id}` | Update assignment (Teacher/Admin) |
+| DELETE | `/api/assignments/{id}` | Delete assignment (Teacher/Admin) |
+| POST | `/api/assignments/{id}/publish` | Publish draft assignment |
+
+### Submissions
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/submissions` | Submit assignment (Student) |
+| GET | `/api/submissions/my` | Get my submissions (Student) |
+| GET | `/api/submissions` | List all submissions (Teacher/Admin) |
+| GET | `/api/submissions/{id}` | Get submission detail |
+| GET | `/api/assignments/{id}/submissions` | Get submissions for assignment |
+| POST | `/api/submissions/{id}/grade` | Grade submission (Teacher/Admin) |
+| POST | `/api/submissions/{id}/status` | Change status (Teacher/Admin) |
+
+### Academics (Admin only)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET/POST | `/api/academics/programs` | List/Create programs |
+| PUT/DELETE | `/api/academics/programs/{id}` | Update/Delete program |
+| GET/POST | `/api/academics/departments` | List/Create departments |
+| PUT/DELETE | `/api/academics/departments/{id}` | Update/Delete department |
+| GET/POST | `/api/academics/semesters` | List/Create semesters |
+| PUT/DELETE | `/api/academics/semesters/{id}` | Update/Delete semester |
+
+### Announcements
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/courses/{courseId}/announcements` | Get course announcements |
+| POST | `/api/courses/{courseId}/announcements` | Post announcement (Teacher/Admin) |
+| DELETE | `/api/announcements/{id}` | Delete announcement |
+
+### Dashboard & Settings (Admin only)
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/dashboard/stats` | Get dashboard statistics |
+| GET | `/api/app-settings` | Get all app settings |
+| PUT | `/api/app-settings` | Upsert app setting |
+
+### Health Checks
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Liveness check |
+| GET | `/health/ready` | Readiness check (database) |
+
+---
+
+## 🧪 Running Tests
 
 ```bash
 cd backend
+
+# Run all tests
+dotnet test
+
+# Run unit tests only
 dotnet test tests/eClassroomPro.Application.UnitTests
-```
 
-Covers:
-- `AuthServiceTests` — login, refresh-token rotation, revocation, disabled accounts
-- `AssignmentServiceTests` — validation, authorization, draft creation
-- `SubmissionServiceTests` — submission rules, grading validation
-- `RoleAccessTests` — cross-role access denial
-
-### Integration Tests (Infrastructure Layer)
-
-```bash
-cd backend
+# Run integration tests (requires Docker for Testcontainers)
 dotnet test tests/eClassroomPro.Infrastructure.IntegrationTests
 ```
 
-Uses **Testcontainers** to spin up a real PostgreSQL instance for repository tests.
-
 ---
 
-## 📡 API Endpoints Overview
+## 📁 Environment Configuration
 
-| Method | Endpoint                                  | Auth        | Description                        |
-|--------|-------------------------------------------|-------------|------------------------------------|
-| POST   | `/api/auth/login`                         | Public      | Authenticate & receive tokens      |
-| POST   | `/api/auth/refresh`                       | Public      | Rotate refresh token               |
-| POST   | `/api/auth/logout`                        | Authenticated | Revoke all refresh tokens        |
-| GET    | `/api/auth/me`                            | Authenticated | Current user profile             |
-| GET    | `/api/users`                              | Admin       | List all users                     |
-| POST   | `/api/users`                              | Admin       | Create user                        |
-| PUT    | `/api/users/{id}`                         | Admin       | Update user                        |
-| DELETE | `/api/users/{id}`                         | Admin       | Delete user                        |
-| GET    | `/api/courses`                            | Authenticated | List all courses                 |
-| GET    | `/api/courses/my`                         | Authenticated | Courses for current user         |
-| GET    | `/api/courses/{id}`                       | Authenticated | Course details                   |
-| GET    | `/api/courses/{id}/people`                | Authenticated | Teachers & students in course    |
-| POST   | `/api/courses`                            | Admin       | Create course                      |
-| PUT    | `/api/courses/{id}`                       | Admin       | Update course                      |
-| DELETE | `/api/courses/{id}`                       | Admin       | Delete course                      |
-| GET    | `/api/assignments`                        | Authenticated | Assignments for current user     |
-| GET    | `/api/courses/{id}/assignments`           | Authenticated | Classwork for a course           |
-| GET    | `/api/assignments/{id}`                   | Authenticated | Assignment details               |
-| POST   | `/api/assignments`                        | Teacher/Admin | Create assignment                |
-| PUT    | `/api/assignments/{id}`                   | Teacher/Admin | Update assignment                |
-| DELETE | `/api/assignments/{id}`                   | Teacher/Admin | Delete assignment                |
-| POST   | `/api/assignments/{id}/publish`           | Teacher/Admin | Publish draft assignment           |
-| POST   | `/api/submissions`                        | Student     | Submit assignment                  |
-| GET    | `/api/submissions/my`                     | Student     | My submissions                     |
-| GET    | `/api/submissions`                        | Teacher/Admin | All submissions (incl. pending)  |
-| GET    | `/api/submissions/{id}`                   | Teacher/Admin | Submission detail                |
-| GET    | `/api/assignments/{id}/submissions`       | Teacher/Admin | Submissions for an assignment    |
-| POST   | `/api/submissions/{id}/grade`             | Teacher/Admin | Grade a submission               |
-| POST   | `/api/submissions/{id}/status`            | Teacher/Admin | Change submission status         |
-| GET    | `/api/courses/{id}/announcements`         | Authenticated | Announcements for a course       |
-| POST   | `/api/courses/{id}/announcements`         | Teacher/Admin | Post announcement                |
-| DELETE | `/api/announcements/{id}`                 | Teacher/Admin | Delete announcement              |
-| GET    | `/api/academics/programs`                 | Admin       | List programs                      |
-| POST   | `/api/academics/programs`                 | Admin       | Create program                     |
-| PUT    | `/api/academics/programs/{id}`            | Admin       | Update program                     |
-| DELETE | `/api/academics/programs/{id}`            | Admin       | Delete program                     |
-| GET    | `/api/academics/departments`              | Admin       | List departments                   |
-| POST   | `/api/academics/departments`              | Admin       | Create department                  |
-| PUT    | `/api/academics/departments/{id}`         | Admin       | Update department                  |
-| DELETE | `/api/academics/departments/{id}`         | Admin       | Delete department                  |
-| GET    | `/api/academics/semesters`                | Admin       | List semesters                     |
-| POST   | `/api/academics/semesters`                | Admin       | Create semester                    |
-| PUT    | `/api/academics/semesters/{id}`           | Admin       | Update semester                    |
-| DELETE | `/api/academics/semesters/{id}`           | Admin       | Delete semester                    |
-| GET    | `/api/app-settings`                       | Admin       | Get all settings                   |
-| PUT    | `/api/app-settings`                       | Admin       | Upsert a setting                   |
-| GET    | `/api/dashboard/stats`                    | Admin       | Dashboard statistics               |
-| GET    | `/health`                                 | Public      | Liveness check                     |
-| GET    | `/health/ready`                           | Public      | Database readiness check           |
-
----
-
-## 🏛️ Architecture
-
-The backend follows **Clean Architecture** with strict dependency direction:
-
-```
-API  →  Application  →  Domain
- ↓          ↓
-Infrastructure
+### Backend (`appsettings.json`)
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=eClassroomPro;Username=postgres;Password=postgres"
+  },
+  "Jwt": {
+    "Secret": "<min-64-character-secret>",
+    "Issuer": "eClassroomPro.API",
+    "Audience": "eClassroomPro.Client",
+    "ExpiresMinutes": 15,
+    "RefreshTokenExpirationDays": 7
+  }
+}
 ```
 
-- **Domain** — Entities, Enums, no external dependencies
-- **Application** — Business logic (Services), DTOs, Interfaces, Exceptions
-- **Infrastructure** — EF Core DbContext, Repositories, JWT, Password Hashing, Migrations
-- **API** — Controllers, Middleware, DI composition root, Health checks
-
-The frontend uses **Next.js App Router** with:
-- Route groups `(dashboard)` and `(admin)` for layout separation
-- `AuthProvider` context with JWT session management and automatic token refresh
-- Typed API client (`lib/api/client.ts`) with 401 → refresh → retry logic
-- Zod schemas for shared data validation
-
----
-
-## 🐳 Docker Services
-
-```yaml
-db:        PostgreSQL 16 (health-checked)
-api:       .NET 10 API (auto-migrates & seeds on startup)
-frontend:  Next.js dev server with hot reload (bind-mounted source)
+### Frontend
+Set the API URL via environment variable:
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-Volumes: `pgdata` (database), `frontend_node_modules`, `frontend_next` (build cache).
+### Docker Compose Environment Variables
+| Variable | Default | Description |
+|---|---|---|
+| `JWT_SECRET` | Development secret | JWT signing key (min 64 chars) |
+| `JWT_ISSUER` | `eClassroomPro.API` | Token issuer |
+| `JWT_AUDIENCE` | `eClassroomPro.Client` | Token audience |
+| `JWT_EXPIRES_MINUTES` | `15` | Access token lifetime |
+| `JWT_REFRESH_DAYS` | `7` | Refresh token lifetime |
 
 ---
 
-## 📜 License
+## 🗄️ Database
 
-This project is licensed under the terms found in the [LICENSE](./LICENSE) file.
+- **Engine**: PostgreSQL 16
+- **ORM**: Entity Framework Core with Code-First Migrations
+- **Auto-migration**: The API runs `MigrateAsync()` and seeds data on startup
+- **Seed Data**: Includes demo users, academic programs, departments, semesters, a sample course, assignment, and submission
+
+---
+
+## 📄 License
+
+This project is licensed under the [LICENSE](./LICENSE) file included in the repository.
