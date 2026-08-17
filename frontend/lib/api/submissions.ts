@@ -86,3 +86,16 @@ export function gradeSubmissionRequest(id: number, payload: GradeSubmissionPaylo
         body: JSON.stringify(payload),
     });
 }
+
+
+
+export function uploadSubmissionAttachmentRequest(submissionId: number, formData: FormData): Promise<SubmissionAttachmentDto> {
+    return apiFetch<SubmissionAttachmentDto>(`/api/submissions/${submissionId}/attachments`, {
+        method: "POST",
+        body: formData,
+    });
+}
+
+export function deleteSubmissionAttachmentRequest(submissionId: number, attachmentId: number): Promise<void> {
+    return apiFetch<void>(`/api/submissions/${submissionId}/attachments/${attachmentId}`, { method: "DELETE" });
+}

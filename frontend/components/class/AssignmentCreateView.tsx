@@ -24,13 +24,14 @@ interface DraftAttachment {
     kind: "file" | "link";
     fileType: string;
     url?: string;
+    file?: File;
 }
 
 interface AssignmentCreateViewProps {
     courseName: string;
     initial: ClassworkEntry | null;
     onClose: () => void;
-    onSubmit: (entry: ClassworkEntry) => void;
+    onSubmit: (entry: ClassworkEntry, attachments: DraftAttachment[]) => void;
 }
 
 const POINT_OPTIONS = [100, 50, 25, 10, 0];
@@ -147,6 +148,7 @@ export function AssignmentCreateView({
                 kind: "file" as const,
                 fileType: (extOf(f.name) || "file").toUpperCase(),
                 url: URL.createObjectURL(f),
+                file: f, // <-- Store the file
             })),
         ]);
         e.target.value = "";
@@ -191,7 +193,7 @@ export function AssignmentCreateView({
             setTitleTouched(true);
             if (status === "Assigned") return;
         }
-        onSubmit(buildEntry(status));
+        onSubmit(buildEntry(status), attachments); // <-- Pass attachments to parent
     };
 
     return (
@@ -218,8 +220,8 @@ export function AssignmentCreateView({
                             type="button"
                             onClick={() => submit("Assigned")}
                             className={`rounded-l-full py-2.5 pl-6 pr-5 text-sm font-medium transition-colors ${titleValid
-                                    ? "cursor-pointer bg-[#1a63d8] text-white hover:bg-[#1554b5]"
-                                    : "cursor-default bg-[#e0e3e7] text-gray-500"
+                                ? "cursor-pointer bg-[#1a63d8] text-white hover:bg-[#1554b5]"
+                                : "cursor-default bg-[#e0e3e7] text-gray-500"
                                 }`}
                         >
                             Assign
@@ -274,8 +276,8 @@ export function AssignmentCreateView({
                                 placeholder={showTitleError ? "Title*" : "Title"}
                                 onChange={(e) => setTitle(e.target.value)}
                                 className={`w-full bg-transparent text-[15px] focus:outline-none ${showTitleError
-                                        ? "text-[#c5221f] placeholder:text-[#c5221f]"
-                                        : "text-gray-900 placeholder:text-gray-700"
+                                    ? "text-[#c5221f] placeholder:text-[#c5221f]"
+                                    : "text-gray-900 placeholder:text-gray-700"
                                     }`}
                             />
                         </div>
@@ -501,8 +503,8 @@ export function AssignmentCreateView({
                                 disabled={!linkValid}
                                 onClick={confirmAddLink}
                                 className={`text-sm font-medium ${linkValid
-                                        ? "cursor-pointer text-[#1a73e8] hover:underline"
-                                        : "cursor-default text-gray-400"
+                                    ? "cursor-pointer text-[#1a73e8] hover:underline"
+                                    : "cursor-default text-gray-400"
                                     }`}
                             >
                                 Add link

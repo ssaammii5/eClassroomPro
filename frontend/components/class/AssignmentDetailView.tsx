@@ -16,11 +16,17 @@ import {
     X,
 } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
-import type { AssignmentAttachment, AssignmentDetail } from "@/lib/assignmentDetails";
+import { submitAssignmentRequest, uploadSubmissionAttachmentRequest } from "@/lib/api/submissions";
+import { API_URL } from "@/lib/api/client";
+import type { AssignmentDetail } from "@/lib/assignmentDetails";
 
 interface AssignmentDetailViewProps {
     detail: AssignmentDetail;
     readOnly?: boolean;
+}
+
+interface AssignmentAttachment {
+    id: number; title: string; fileType: string; thumbClass: string; url?: string; kind?: "file" | "link"; file?: File;
 }
 
 type WorkStatus = "Assigned" | "Turned in";
@@ -78,12 +84,8 @@ export function AssignmentDetailView({ detail, readOnly = false }: AssignmentDet
         setAttachments((prev) => [
             ...prev,
             ...files.map((f) => ({
-                id: fileIdRef.current++,
-                title: f.name,
-                fileType: (extOf(f.name) || "file").toUpperCase(),
-                thumbClass: "bg-gray-100",
-                url: URL.createObjectURL(f),
-                kind: "file" as const,
+                id: fileIdRef.current++, title: f.name, fileType: (extOf(f.name) || "file").toUpperCase(),
+                thumbClass: "bg-gray-100", url: URL.createObjectURL(f), kind: "file" as const, file: f, // Store file
             })),
         ]);
         e.target.value = "";
@@ -129,9 +131,31 @@ export function AssignmentDetailView({ detail, readOnly = false }: AssignmentDet
         else setStatus("Turned in");
     };
 
-    const confirmTurnIn = () => {
+    const confirmTurnIn = async () => {
         setTurnInOpen(false);
         setStatus("Turned in");
+        try {
+            // 1. Submit the assignment
+            const res = await submitAssignmentRequest({ assignmentId: detail.id, answer: "Submitted via file attachment" });
+            const submissionId = res.id;
+
+            // 2. Upload attachments
+            for (const att of attachments) {
+                const fd = new FormData();
+                if (att.kind === "file" && att.file) {
+                    fd.append("file", att.file);
+                } else if (att.kind === "link" && att.url) {
+                    fd.append("linkUrl", att.url);
+                    fd.append("linkTitle", att.title);
+                } else {
+                    continue;
+                }
+                await uploadSubmissionAttachmentRequest(submissionId, fd);
+            }
+        } catch (err) {
+            console.error("Submission failed", err);
+            // Optionally revert UI state or show toast
+        }
     };
 
     const confirmUnsubmit = () => {
@@ -283,8 +307,8 @@ export function AssignmentDetailView({ detail, readOnly = false }: AssignmentDet
                                 type="button"
                                 onClick={turnedIn ? () => setUnsubmitOpen(true) : handlePrimary}
                                 className={`mt-4 w-full cursor-pointer rounded-full py-2.5 text-sm font-medium transition-colors ${turnedIn
-                                        ? "border border-gray-400/80 text-[#1a73e8] hover:bg-white/70"
-                                        : "bg-[#1a63d8] text-white hover:bg-[#1554b5]"
+                                    ? "border border-gray-400/80 text-[#1a73e8] hover:bg-white/70"
+                                    : "bg-[#1a63d8] text-white hover:bg-[#1554b5]"
                                     }`}
                             >
                                 {turnedIn ? "Unsubmit" : attachments.length > 0 ? "Turn in" : "Mark as done"}
@@ -425,8 +449,8 @@ export function AssignmentDetailView({ detail, readOnly = false }: AssignmentDet
                                 disabled={!linkValid}
                                 onClick={confirmAddLink}
                                 className={`text-sm font-medium ${linkValid
-                                        ? "cursor-pointer text-[#1a73e8] hover:underline"
-                                        : "cursor-default text-gray-400"
+                                    ? "cursor-pointer text-[#1a73e8] hover:underline"
+                                    : "cursor-default text-gray-400"
                                     }`}
                             >
                                 Add link
@@ -513,7 +537,8 @@ function FileViewerModal({
     onClose: () => void;
 }) {
     const ext = extOf(attachment.title);
-    const url = attachment.url;
+    const rawUrl = attachment.url;
+    const url = rawUrl?.startsWith("http") ? rawUrl : `${API_URL}${rawUrl}`;
     const isImage = IMAGE_EXTS.includes(ext);
     const isPdf = ext === "pdf";
     const isText = TEXT_EXTS.includes(ext);

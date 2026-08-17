@@ -41,6 +41,16 @@ export interface UpdateAssignmentPayload {
     maxMarks: number;
 }
 
+export interface AssignmentAttachmentDto {
+    id: number;
+    fileName: string;
+    fileType: string;
+    fileSize: string;
+    uploadedAtUtc: string;
+    kind: string;
+    url: string | null;
+}
+
 export function getAssignmentsRequest(): Promise<AssignmentDto[]> {
     return apiFetch<AssignmentDto[]>("/api/assignments", { method: "GET" });
 }
@@ -73,4 +83,16 @@ export function deleteAssignmentRequest(id: number): Promise<void> {
 
 export function publishAssignmentRequest(id: number): Promise<void> {
     return apiFetch<void>(`/api/assignments/${id}/publish`, { method: "POST" });
+}
+
+
+export function uploadAssignmentAttachmentRequest(assignmentId: number, formData: FormData): Promise<AssignmentAttachmentDto> {
+    return apiFetch<AssignmentAttachmentDto>(`/api/assignments/${assignmentId}/attachments`, {
+        method: "POST",
+        body: formData,
+    });
+}
+
+export function deleteAssignmentAttachmentRequest(assignmentId: number, attachmentId: number): Promise<void> {
+    return apiFetch<void>(`/api/assignments/${assignmentId}/attachments/${attachmentId}`, { method: "DELETE" });
 }
