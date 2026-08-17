@@ -3,6 +3,8 @@ using eClassroomPro.Application.Exceptions;
 using eClassroomPro.Application.Interfaces;
 using eClassroomPro.Domain.Entities;
 using eClassroomPro.Domain.Enums;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace eClassroomPro.Application.Services;
 
@@ -14,6 +16,8 @@ public class AssignmentService
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IApplicationDbContext _db;
+    private readonly IFileStorageService _fileStorageService;
 
     public AssignmentService(
         IAssignmentRepository assignmentRepository,
@@ -21,7 +25,9 @@ public class AssignmentService
         ISubmissionRepository submissionRepository,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IApplicationDbContext db,
+        IFileStorageService fileStorageService)
     {
         _assignmentRepository = assignmentRepository;
         _courseRepository = courseRepository;
@@ -29,17 +35,16 @@ public class AssignmentService
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
+        _db = db;
+        _fileStorageService = fileStorageService;
     }
 
     public async Task<IReadOnlyList<AssignmentDto>> GetAllForCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         if (_currentUserService.UserId is null)
-        {
             throw new UnauthorizedAccessException("User identity not found.");
-        }
 
         IReadOnlyList<Assignment> assignments;
-
         if (_currentUserService.IsAdmin)
         {
             assignments = await _assignmentRepository.GetAllAsync(cancellationToken);
@@ -63,9 +68,7 @@ public class AssignmentService
     public async Task<AssignmentDto> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         if (_currentUserService.UserId is null)
-        {
             throw new UnauthorizedAccessException("User identity not found.");
-        }
 
         var assignment = await _assignmentRepository.GetByIdAsync(id, cancellationToken)
             ?? throw new NotFoundException("Assignment not found.");
@@ -73,31 +76,23 @@ public class AssignmentService
         if (_currentUserService.IsStudent)
         {
             if (assignment.Status != AssignmentStatus.Published)
-            {
                 throw new NotFoundException("Assignment not found.");
-            }
 
             var isEnrolled = await _courseRepository.IsStudentEnrolledAsync(
                 assignment.CourseId,
                 _currentUserService.UserId.Value,
                 cancellationToken);
-
             if (!isEnrolled)
-            {
                 throw new NotFoundException("Assignment not found.");
-            }
         }
 
         return ToDto(assignment);
     }
 
-    // Phase 8: classwork for a specific course (role-aware).
     public async Task<IReadOnlyList<AssignmentDto>> GetForCourseAsync(int courseId, CancellationToken cancellationToken = default)
     {
         if (_currentUserService.UserId is null)
-        {
             throw new UnauthorizedAccessException("User identity not found.");
-        }
 
         var course = await _courseRepository.GetByIdAsync(courseId, cancellationToken)
             ?? throw new NotFoundException("Course not found.");
@@ -108,11 +103,8 @@ public class AssignmentService
                 courseId,
                 _currentUserService.UserId.Value,
                 cancellationToken);
-
             if (!isEnrolled)
-            {
                 throw new ForbiddenAccessException("You are not enrolled in this course.");
-            }
 
             var assignments = await _assignmentRepository.GetPublishedForCourseAsync(courseId, cancellationToken);
             var mySubmissions = await _submissionRepository.GetByStudentAsync(_currentUserService.UserId.Value, cancellationToken);
@@ -129,7 +121,6 @@ public class AssignmentService
         }
 
         EnsureCanManageCourse(course);
-
         var all = await _assignmentRepository.GetForCourseAsync(courseId, cancellationToken);
         return all.Select(ToDto).ToList();
     }
@@ -137,29 +128,15 @@ public class AssignmentService
     public async Task<int> CreateAsync(CreateAssignmentDto dto, CancellationToken cancellationToken = default)
     {
         if (!_currentUserService.IsTeacher && !_currentUserService.IsAdmin)
-        {
             throw new ForbiddenAccessException("Only teachers or admins can create assignments.");
-        }
-
         if (_currentUserService.UserId is null)
-        {
             throw new UnauthorizedAccessException("User identity not found.");
-        }
-
         if (string.IsNullOrWhiteSpace(dto.Title))
-        {
             throw new ValidationException("Assignment title is required.");
-        }
-
         if (dto.MaxMarks <= 0)
-        {
             throw new ValidationException("Maximum marks must be greater than zero.");
-        }
-
         if (dto.DeadlineUtc <= _dateTimeProvider.UtcNow)
-        {
             throw new BusinessException("Assignment deadline must be in the future.");
-        }
 
         var course = await _courseRepository.GetByIdAsync(dto.CourseId, cancellationToken)
             ?? throw new NotFoundException("Course not found.");
@@ -168,11 +145,8 @@ public class AssignmentService
         {
             var isTeacherOfCourse = course.TeacherId == _currentUserService.UserId
                 || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
-
             if (!isTeacherOfCourse)
-            {
                 throw new ForbiddenAccessException("You can create assignments only for courses assigned to you.");
-            }
         }
 
         var assignment = new Assignment
@@ -190,7 +164,6 @@ public class AssignmentService
 
         await _assignmentRepository.AddAsync(assignment, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
         return assignment.Id;
     }
 
@@ -202,27 +175,17 @@ public class AssignmentService
         EnsureCanManageAssignment(assignment);
 
         if (string.IsNullOrWhiteSpace(dto.Title))
-        {
             throw new ValidationException("Assignment title is required.");
-        }
-
         if (dto.MaxMarks <= 0)
-        {
             throw new ValidationException("Maximum marks must be greater than zero.");
-        }
-
         if (dto.DeadlineUtc <= _dateTimeProvider.UtcNow)
-        {
             throw new BusinessException("Assignment deadline must be in the future.");
-        }
 
         if (assignment.Status == AssignmentStatus.Published)
         {
             var hasSubmissions = await _assignmentRepository.AnySubmittedAsync(id, cancellationToken);
             if (hasSubmissions)
-            {
                 throw new BusinessException("Cannot update a published assignment after students have submitted.");
-            }
         }
 
         assignment.Title = dto.Title.Trim();
@@ -245,9 +208,7 @@ public class AssignmentService
 
         var hasSubmissions = await _assignmentRepository.AnySubmittedAsync(id, cancellationToken);
         if (hasSubmissions)
-        {
             throw new BusinessException("Cannot delete an assignment that has student submissions.");
-        }
 
         _assignmentRepository.Remove(assignment);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
@@ -261,14 +222,9 @@ public class AssignmentService
         EnsureCanManageAssignment(assignment);
 
         if (assignment.Status != AssignmentStatus.Draft)
-        {
             throw new BusinessException("Only draft assignments can be published.");
-        }
-
         if (assignment.DeadlineUtc <= _dateTimeProvider.UtcNow)
-        {
             throw new BusinessException("Cannot publish an assignment after its deadline.");
-        }
 
         assignment.Status = AssignmentStatus.Published;
         assignment.UpdatedAtUtc = _dateTimeProvider.UtcNow;
@@ -276,47 +232,96 @@ public class AssignmentService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<AssignmentAttachmentDto> AddAttachmentAsync(
+        int assignmentId, 
+        IFormFile? file, 
+        string? linkUrl, 
+        string? linkTitle, 
+        CancellationToken cancellationToken)
+    {
+        var assignment = await _assignmentRepository.GetByIdAsync(assignmentId, cancellationToken) 
+            ?? throw new NotFoundException("Assignment not found.");
+
+        EnsureCanManageAssignment(assignment);
+
+        var attachment = new AssignmentAttachment { AssignmentId = assignmentId };
+
+        if (file is not null && file.Length > 0)
+        {
+            var storedPath = await _fileStorageService.SaveFileAsync(file, "assignments", cancellationToken);
+            attachment.FileName = file.FileName;
+            attachment.FileType = file.ContentType;
+            attachment.FileSize = file.Length;
+            attachment.StoredPath = storedPath;
+            attachment.Kind = "file";
+            attachment.Url = $"/{storedPath}";
+        }
+        else if (!string.IsNullOrWhiteSpace(linkUrl))
+        {
+            attachment.FileName = linkTitle ?? linkUrl;
+            attachment.FileType = "Link";
+            attachment.FileSize = 0;
+            attachment.StoredPath = string.Empty;
+            attachment.Kind = "link";
+            attachment.Url = linkUrl;
+        }
+        else
+        {
+            throw new ValidationException("Either a file or a link URL must be provided.");
+        }
+
+        _db.AssignmentAttachments.Add(attachment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return MapAttachmentToDto(attachment);
+    }
+
+    public async Task DeleteAttachmentAsync(int assignmentId, int attachmentId, CancellationToken cancellationToken)
+    {
+        var attachment = await _db.AssignmentAttachments.FirstOrDefaultAsync(x => x.Id == attachmentId && x.AssignmentId == assignmentId, cancellationToken) 
+            ?? throw new NotFoundException("Attachment not found.");
+            
+        var assignment = await _assignmentRepository.GetByIdAsync(assignmentId, cancellationToken) 
+            ?? throw new NotFoundException("Assignment not found.");
+
+        EnsureCanManageAssignment(assignment);
+
+        if (attachment.Kind == "file" && !string.IsNullOrEmpty(attachment.StoredPath))
+        {
+            _fileStorageService.DeleteFile(attachment.StoredPath);
+        }
+
+        _db.AssignmentAttachments.Remove(attachment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     private void EnsureCanManageCourse(Course course)
     {
         if (_currentUserService.IsAdmin)
-        {
             return;
-        }
-
         if (!_currentUserService.IsTeacher)
-        {
             throw new ForbiddenAccessException("Only teachers or admins can manage this course.");
-        }
 
         var isTeacher = course.TeacherId == _currentUserService.UserId
             || course.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId);
 
         if (!isTeacher)
-        {
             throw new ForbiddenAccessException("You do not have permission to manage this course.");
-        }
     }
 
     private void EnsureCanManageAssignment(Assignment assignment)
     {
         if (_currentUserService.IsAdmin)
-        {
             return;
-        }
-
         if (!_currentUserService.IsTeacher)
-        {
             throw new ForbiddenAccessException("Only teachers or admins can manage assignments.");
-        }
 
         var isCreator = assignment.CreatedById == _currentUserService.UserId;
         var isPrimaryTeacher = assignment.Course?.TeacherId == _currentUserService.UserId;
         var isCourseTeacher = assignment.Course?.CourseTeachers.Any(x => x.TeacherId == _currentUserService.UserId) ?? false;
 
         if (!isCreator && !isPrimaryTeacher && !isCourseTeacher)
-        {
             throw new ForbiddenAccessException("You do not have permission to manage this assignment.");
-        }
     }
 
     private static string MapSubmissionStatus(SubmissionStatus status) => status switch
@@ -347,7 +352,26 @@ public class AssignmentService
             CreatedById = assignment.CreatedById,
             CreatedByName = assignment.CreatedBy?.Name,
             CreatedAtUtc = assignment.CreatedAtUtc,
-            SubmissionCount = assignment.Submissions?.Count ?? 0
+            SubmissionCount = assignment.Submissions?.Count ?? 0,
+            Attachments = assignment.Attachments?.Select(MapAttachmentToDto).ToList() ?? new()
         };
+    }
+
+    private static AssignmentAttachmentDto MapAttachmentToDto(AssignmentAttachment a) => new()
+    {
+        Id = a.Id,
+        FileName = a.FileName,
+        FileType = a.FileType,
+        FileSize = FormatFileSize(a.FileSize),
+        UploadedAtUtc = a.CreatedAtUtc,
+        Kind = a.Kind,
+        Url = a.Url ?? a.StoredPath
+    };
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} KB";
+        return $"{bytes / (1024.0 * 1024.0):0.#} MB";
     }
 }

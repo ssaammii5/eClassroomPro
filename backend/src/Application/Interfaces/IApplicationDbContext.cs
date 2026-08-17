@@ -1,3 +1,4 @@
+// backend/src/Application/Interfaces/IApplicationDbContext.cs
 using eClassroomPro.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ public interface IApplicationDbContext
     DbSet<CourseTeacher> CourseTeachers { get; }
     DbSet<Enrollment> Enrollments { get; }
     DbSet<Assignment> Assignments { get; }
+    DbSet<AssignmentAttachment> AssignmentAttachments { get; }
     DbSet<Submission> Submissions { get; }
     DbSet<SubmissionAttachment> SubmissionAttachments { get; }
     DbSet<SubmissionActivity> SubmissionActivities { get; }
@@ -21,6 +23,5 @@ public interface IApplicationDbContext
     DbSet<StudentDetails> StudentDetails { get; }
     DbSet<TeacherDetails> TeacherDetails { get; }
     DbSet<Announcement> Announcements { get; }
-
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

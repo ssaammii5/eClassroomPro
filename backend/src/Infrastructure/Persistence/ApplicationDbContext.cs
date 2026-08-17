@@ -1,3 +1,4 @@
+// backend/src/Infrastructure/Persistence/ApplicationDbContext.cs
 using eClassroomPro.Application.Interfaces;
 using eClassroomPro.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -6,16 +7,14 @@ namespace eClassroomPro.Infrastructure.Persistence;
 
 public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWork
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
-    }
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<CourseTeacher> CourseTeachers => Set<CourseTeacher>();
     public DbSet<Enrollment> Enrollments => Set<Enrollment>();
     public DbSet<Assignment> Assignments => Set<Assignment>();
+    public DbSet<AssignmentAttachment> AssignmentAttachments => Set<AssignmentAttachment>();
     public DbSet<Submission> Submissions => Set<Submission>();
     public DbSet<SubmissionAttachment> SubmissionAttachments => Set<SubmissionAttachment>();
     public DbSet<SubmissionActivity> SubmissionActivities => Set<SubmissionActivity>();
@@ -43,7 +42,6 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext, IUnitOfWor
                 entry.Entity.UpdatedAtUtc = DateTime.UtcNow;
             }
         }
-
         return base.SaveChangesAsync(cancellationToken);
     }
 }

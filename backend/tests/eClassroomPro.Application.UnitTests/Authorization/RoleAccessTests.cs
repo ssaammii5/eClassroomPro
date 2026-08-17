@@ -17,6 +17,7 @@ public class RoleAccessTests
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<IApplicationDbContext> _db = new();
+    private readonly Mock<IFileStorageService> _fileStorageService = new();
 
     public RoleAccessTests()
     {
@@ -37,7 +38,9 @@ public class RoleAccessTests
             _submissionRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _db.Object,
+            _fileStorageService.Object);
 
         var dto = new CreateAssignmentDto
         {
@@ -67,7 +70,8 @@ public class RoleAccessTests
             _currentUserService.Object,
             _dateTimeProvider.Object,
             _unitOfWork.Object,
-            _db.Object);
+            _db.Object,
+            _fileStorageService.Object);
 
         var dto = new GradeSubmissionDto
         {

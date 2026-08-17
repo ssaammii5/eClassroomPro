@@ -17,6 +17,8 @@ public class AssignmentServiceTests
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<IApplicationDbContext> _db = new();
+    private readonly Mock<IFileStorageService> _fileStorageService = new();
     private readonly AssignmentService _assignmentService;
     private readonly DateTime _utcNow = new(2026, 8, 8, 12, 0, 0, DateTimeKind.Utc);
 
@@ -29,7 +31,9 @@ public class AssignmentServiceTests
             _submissionRepository.Object,
             _currentUserService.Object,
             _dateTimeProvider.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _db.Object,
+            _fileStorageService.Object);
     }
 
     [Fact]
@@ -146,7 +150,6 @@ public class AssignmentServiceTests
         var result = await _assignmentService.CreateAsync(dto);
 
         result.Should().Be(10);
-
         _assignmentRepository.Verify(
             x => x.AddAsync(
                 It.Is<Assignment>(a =>

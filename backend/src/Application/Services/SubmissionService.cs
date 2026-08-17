@@ -3,6 +3,7 @@ using eClassroomPro.Application.Exceptions;
 using eClassroomPro.Application.Interfaces;
 using eClassroomPro.Domain.Entities;
 using eClassroomPro.Domain.Enums;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace eClassroomPro.Application.Services;
@@ -10,7 +11,6 @@ namespace eClassroomPro.Application.Services;
 public class SubmissionService
 {
     private const int PendingKeyMultiplier = 1_000_000;
-
     private readonly ISubmissionRepository _submissionRepository;
     private readonly IAssignmentRepository _assignmentRepository;
     private readonly ICourseRepository _courseRepository;
@@ -18,6 +18,7 @@ public class SubmissionService
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IApplicationDbContext _db;
+    private readonly IFileStorageService _fileStorageService;
 
     public SubmissionService(
         ISubmissionRepository submissionRepository,
@@ -26,7 +27,8 @@ public class SubmissionService
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         IUnitOfWork unitOfWork,
-        IApplicationDbContext db)
+        IApplicationDbContext db,
+        IFileStorageService fileStorageService)
     {
         _submissionRepository = submissionRepository;
         _assignmentRepository = assignmentRepository;
@@ -35,6 +37,7 @@ public class SubmissionService
         _dateTimeProvider = dateTimeProvider;
         _unitOfWork = unitOfWork;
         _db = db;
+        _fileStorageService = fileStorageService;
     }
 
     // ──────────────────────────────────────────────── Student submit
@@ -42,10 +45,8 @@ public class SubmissionService
     {
         if (!_currentUserService.IsStudent)
             throw new ForbiddenAccessException("Only students can submit assignments.");
-
         if (_currentUserService.UserId is null)
             throw new UnauthorizedAccessException("User identity not found.");
-
         if (string.IsNullOrWhiteSpace(dto.Answer))
             throw new ValidationException("Submission answer cannot be empty.");
 
@@ -54,7 +55,6 @@ public class SubmissionService
 
         if (assignment.Status != AssignmentStatus.Published)
             throw new BusinessException("Assignment is not available for submission.");
-
         if (assignment.DeadlineUtc <= _dateTimeProvider.UtcNow)
             throw new BusinessException("Assignment deadline has passed.");
 
@@ -62,7 +62,6 @@ public class SubmissionService
             assignment.CourseId,
             _currentUserService.UserId.Value,
             cancellationToken);
-
         if (!isEnrolled)
             throw new ForbiddenAccessException("You are not enrolled in this course.");
 
@@ -72,7 +71,6 @@ public class SubmissionService
             cancellationToken);
 
         int submissionId;
-
         if (existingSubmission is not null)
         {
             if (existingSubmission.Status == SubmissionStatus.Graded)
@@ -84,7 +82,6 @@ public class SubmissionService
             existingSubmission.UpdatedAtUtc = _dateTimeProvider.UtcNow;
             _submissionRepository.Update(existingSubmission);
             submissionId = existingSubmission.Id;
-
             await AddActivityAsync(submissionId, "Resubmitted assignment", _currentUserService.UserId.Value, cancellationToken);
         }
         else
@@ -97,16 +94,13 @@ public class SubmissionService
                 Status = SubmissionStatus.Submitted,
                 SubmittedAtUtc = _dateTimeProvider.UtcNow
             };
-
             await _submissionRepository.AddAsync(submission, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
             submissionId = submission.Id;
-
             await AddActivityAsync(submissionId, "Submitted assignment", _currentUserService.UserId.Value, cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
         var full = await _submissionRepository.GetByIdWithFullDetailAsync(submissionId, cancellationToken);
         return MapToDto(full!);
     }
@@ -130,10 +124,8 @@ public class SubmissionService
 
         if (submission.Status != SubmissionStatus.Submitted)
             throw new BusinessException("Only submitted work can be graded.");
-
         if (dto.Marks < 0)
             throw new ValidationException("Marks cannot be negative.");
-
         if (dto.Marks > submission.Assignment.MaxMarks)
             throw new ValidationException("Marks cannot exceed maximum marks.");
 
@@ -151,7 +143,6 @@ public class SubmissionService
             cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
         var full = await _submissionRepository.GetByIdWithFullDetailAsync(submissionId, cancellationToken);
         return MapToDto(full!);
     }
@@ -175,7 +166,6 @@ public class SubmissionService
 
         if (dto.Status == SubmissionStatus.Graded && submission.Marks is null)
             throw new BusinessException("Cannot mark a submission as graded without marks.");
-
         if (dto.Status == SubmissionStatus.Submitted && submission.SubmittedAtUtc is null)
             submission.SubmittedAtUtc = _dateTimeProvider.UtcNow;
 
@@ -189,7 +179,6 @@ public class SubmissionService
             cancellationToken);
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-
         var full = await _submissionRepository.GetByIdWithFullDetailAsync(submissionId, cancellationToken);
         return MapToDto(full!);
     }
@@ -204,7 +193,6 @@ public class SubmissionService
             ?? throw new NotFoundException("Assignment not found.");
 
         EnsureCanManageAssignment(assignment);
-
         var submissions = await _submissionRepository.GetByAssignmentAsync(assignmentId, cancellationToken);
         return submissions.Select(MapToDto).ToList();
     }
@@ -214,7 +202,6 @@ public class SubmissionService
     {
         if (!_currentUserService.IsStudent)
             throw new ForbiddenAccessException("Only students can view their submissions.");
-
         if (_currentUserService.UserId is null)
             throw new UnauthorizedAccessException("User identity not found.");
 
@@ -234,18 +221,17 @@ public class SubmissionService
             .Include(a => a.CreatedBy)
             .Include(a => a.Course)
                 .ThenInclude(c => c!.Enrollments)
-                .ThenInclude(e => e.User)
-                .ThenInclude(u => u!.StudentDetails)
+                    .ThenInclude(e => e.User)
+                        .ThenInclude(u => u!.StudentDetails)
             .Include(a => a.Submissions)
                 .ThenInclude(s => s.Student)
-                .ThenInclude(u => u!.StudentDetails)
+                    .ThenInclude(u => u!.StudentDetails)
             .Include(a => a.Submissions).ThenInclude(s => s.Attachments)
             .Include(a => a.Submissions).ThenInclude(s => s.Activities).ThenInclude(x => x.Actor)
             .Include(a => a.Submissions).ThenInclude(s => s.GradedBy)
             .ToListAsync(cancellationToken);
 
         var result = new List<SubmissionDto>();
-
         foreach (var assignment in assignments)
         {
             var course = assignment.Course;
@@ -257,7 +243,6 @@ public class SubmissionService
                 if (student is null || student.Role != Role.Student) continue;
 
                 var submission = assignment.Submissions.FirstOrDefault(s => s.StudentId == student.Id);
-
                 result.Add(submission is not null
                     ? MapToDto(submission)
                     : BuildPendingDto(assignment, student));
@@ -293,6 +278,86 @@ public class SubmissionService
         return MapToDto(submission);
     }
 
+    // ──────────────────────────────────────────────── Add Submission Attachment
+    public async Task<SubmissionAttachmentDto> AddSubmissionAttachmentAsync(
+        int submissionId, 
+        IFormFile? file, 
+        string? linkUrl, 
+        string? linkTitle, 
+        CancellationToken cancellationToken)
+    {
+        var submission = await _submissionRepository.GetByIdWithAssignmentAsync(submissionId, cancellationToken) 
+            ?? throw new NotFoundException("Submission not found.");
+
+        if (_currentUserService.IsStudent && submission.StudentId != _currentUserService.UserId)
+            throw new ForbiddenAccessException("You can only add attachments to your own submissions.");
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsTeacher)
+            throw new ForbiddenAccessException("Only teachers or admins can manage this submission.");
+
+        var attachment = new SubmissionAttachment { SubmissionId = submissionId };
+
+        if (file is not null && file.Length > 0)
+        {
+            var storedPath = await _fileStorageService.SaveFileAsync(file, "submissions", cancellationToken);
+            attachment.FileName = file.FileName;
+            attachment.FileType = file.ContentType;
+            attachment.FileSize = file.Length;
+            attachment.StoredPath = storedPath;
+            attachment.Kind = "file";
+            attachment.Url = $"/{storedPath}";
+        }
+        else if (!string.IsNullOrWhiteSpace(linkUrl))
+        {
+            attachment.FileName = linkTitle ?? linkUrl;
+            attachment.FileType = "Link";
+            attachment.FileSize = 0;
+            attachment.StoredPath = string.Empty;
+            attachment.Kind = "link";
+            attachment.Url = linkUrl;
+        }
+        else
+        {
+            throw new ValidationException("Either a file or a link URL must be provided.");
+        }
+
+        _db.SubmissionAttachments.Add(attachment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return new SubmissionAttachmentDto
+        {
+            Id = attachment.Id,
+            FileName = attachment.FileName,
+            FileType = attachment.FileType,
+            FileSize = FormatFileSize(attachment.FileSize),
+            UploadedAtUtc = attachment.CreatedAtUtc,
+            Kind = attachment.Kind,
+            Url = attachment.Url
+        };
+    }
+
+    // ──────────────────────────────────────────────── Delete Submission Attachment
+    public async Task DeleteSubmissionAttachmentAsync(int submissionId, int attachmentId, CancellationToken cancellationToken)
+    {
+        var attachment = await _db.SubmissionAttachments.FirstOrDefaultAsync(x => x.Id == attachmentId && x.SubmissionId == submissionId, cancellationToken) 
+            ?? throw new NotFoundException("Attachment not found.");
+            
+        var submission = await _submissionRepository.GetByIdWithAssignmentAsync(submissionId, cancellationToken) 
+            ?? throw new NotFoundException("Submission not found.");
+
+        if (_currentUserService.IsStudent && submission.StudentId != _currentUserService.UserId)
+            throw new ForbiddenAccessException("You can only delete attachments from your own submissions.");
+        if (!_currentUserService.IsAdmin && !_currentUserService.IsTeacher)
+            throw new ForbiddenAccessException("Only teachers or admins can manage this submission.");
+
+        if (attachment.Kind == "file" && !string.IsNullOrEmpty(attachment.StoredPath))
+        {
+            _fileStorageService.DeleteFile(attachment.StoredPath);
+        }
+
+        _db.SubmissionAttachments.Remove(attachment);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
     // ──────────────────────────────────────────────── helpers
     private async Task<SubmissionDto> BuildPendingDetailAsync(int assignmentId, int studentId, CancellationToken cancellationToken)
     {
@@ -315,7 +380,6 @@ public class SubmissionService
     private static SubmissionDto BuildPendingDto(Assignment assignment, User student)
     {
         var course = assignment.Course;
-
         return new SubmissionDto
         {
             Id = -(assignment.Id * PendingKeyMultiplier + student.Id),
@@ -371,7 +435,6 @@ public class SubmissionService
     {
         if (_currentUserService.IsAdmin)
             return;
-
         if (!_currentUserService.IsTeacher)
             throw new ForbiddenAccessException("Only teachers or admins can manage submissions.");
 
@@ -388,7 +451,6 @@ public class SubmissionService
         var assignment = submission.Assignment;
         var course = assignment?.Course;
         var student = submission.Student;
-
         var isLate = submission.SubmittedAtUtc.HasValue &&
                      assignment is not null &&
                      submission.SubmittedAtUtc.Value > assignment.DeadlineUtc;

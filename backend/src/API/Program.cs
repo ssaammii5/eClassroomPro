@@ -69,6 +69,8 @@ builder.Services.AddScoped<AppSettingService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AnnouncementsService>();
 
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<IDateTimeProvider, SystemDateTimeProvider>();
@@ -198,6 +200,7 @@ if (!app.Environment.IsDevelopment())
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseStaticFiles();
 app.UseCors("Frontend");
 app.UseRateLimiter();
 
